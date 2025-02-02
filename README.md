@@ -1,3 +1,5 @@
+[Tool for game Gray Hack]
+
 How To Install
 
 1. Open CodeEditor.exe
